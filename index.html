@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Lotes</title>
+        <meta charset=utf-8>
+        <link rel="stylesheet" type="text/css" href="css/main.css">
+        <link rel="stylesheet" type="text/css" href="vendor/sweetalert-master/dist/sweetalert.css">
+        <script src="vendor/sweetalert-master/dist/sweetalert.min.js"></script>
+        <script type="text/javascript" src="js/main.js"></script>
+    </head>
+    <body>
+        <div class="container">
+            <form id="init-form" onsubmit="return false;" >
+                <div class="form-container">
+                    <h1>Alta de Programas</h1>
+                    <div>
+                        <input type="text" id="name" name="name" placeholder="Ingresa tu nombre">
+                    </div>
+                    <div class="operation">
+                        <div class="op">
+                            <input type="number" id="num1" name="num1" placeholder="Número 1">
+                        </div>
+                        <div class="op">
+                            <select id="op">
+                                <option value="none">Operación</option>
+                                <option value="sum">Suma</option>
+                                <option value="substraction">Resta</option>
+                                <option value="multiplication">Multiplicación</option>
+                                <option value="division">División</option>
+                                <option value="module">Módulo</option>
+                                <option value="percent">Porcentaje</option>
+                                <option value="root">Raíz</option>
+                            </select>
+                        </div>
+                        <div class="op">
+                            <input type="number" id="num2" name="num2" placeholder="Número 2">
+                        </div>
+                    </div>
+                    <div>
+                        <input type="number" id="max-time" name="max-time" min="1" placeholder="Tiempo máximo estimado">
+                    </div>
+                    <div>
+                        <input type="number" id="id-program" name="id-program" min="1" placeholder="Número de Programa">
+                    </div>
+                    <button onClick="guardar()">Guardar</button>
+                    <button type="submit" form="init-form" value="Submit" id="btn-submit" onClick="excecute()">Finalizar</button>
+                </div>
+                <span class="counter-container">Programas registrados: <span id="counter">0</span></span>
+            </form>
+            <!-- Segunda Parte -->
+            <div id="execution">
+                <div class="counter">
+                    <label for="pending-batches">Número de lotes pendientes:</label>
+                    <input type="number" id="pending-batches" name="pending-batches" value="0" disabled>
+                </div>
+                <section class="main-section">
+                    <section id="bashes">
+                        <h1>Lote en ejecución</h1>
+                        <h2 class="left">Id Programa</h2>
+                        <h2 class="right">TME</h2>
+                    </section>
+                    <section id="process">
+                        <h1>Proceso en ejecución</h1>
+                        <label for="name-process">Programador:</label>
+                        <input type="text" id="name-process" name="name-process" disabled>
+                        <label for="op-process">Operación:</label>
+                        <input type="text" id="op-process" name="op-process" disabled>
+                        <label for="time-process">TME:</label>
+                        <input type="number" id="time-process" name="time-process" disabled>
+                        <label for="id-process">Número de programa:</label>
+                        <input type="number" id="id-process" name="id-process" disabled>
+                        <label for="past-time-process">Tiempo transcurrido:</label>
+                        <input type="number" id="past-time-process" name="past-time-process" disabled>
+                        <label for="remaining-time-process">Tiempo restante:</label>
+                        <input type="number" id="remaining-time-process" name="remaining-time-process" disabled>
+                    </section>
+                    <section id="results">
+                        <h1>Procesos terminados</h1>
+                        <h2 class="left">Id</h2>
+                        <h2 class="right">Operación y resultado</h2>
+                    </section>
+                </section>
+                <div class="counter">
+                    <label for="total-time">Tiempo total transcurrido:</label>
+                    <input type="number" id="total-time" name="total-time" value="0" disabled>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
