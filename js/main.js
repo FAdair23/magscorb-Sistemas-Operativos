@@ -41,7 +41,7 @@ var guardar = function() {
         	}
         	else {
         		var image_url = getImageUrl();
-        		swal({ 
+        		swal({
                 	title: 'Id inválido',
                     text: 'El número de programa que intentas ingresar, ya ha sido registrado',
                     imageUrl: image_url
@@ -61,7 +61,7 @@ var validate = function() {
     inputs[4]         = document.getElementById( 'max-time' );
     inputs[5]         = document.getElementById( 'id-program' );
     var errors        = 0;
-    
+
     for (var i = 0; i < 6; i++) {
         if( inputs[i].value.trim() === '' ) {
             if( inputs[i].getAttribute( 'class' ) !== 'error' ) {
@@ -173,7 +173,7 @@ var opValidate = function( program ) {
     switch( program.op ) {
         case 'division':
             if( program.num2 == 0 ) {
-                swal({ 
+                swal({
                 	title: 'Operación inválida',
                     text: 'No puedes hacer una división entre cero',
                     imageUrl: image_url
@@ -183,7 +183,7 @@ var opValidate = function( program ) {
         break;
         case 'module':
             if( program.num2 == 0 ) {
-                swal({ 
+                swal({
                 	title: 'Operación inválida',
                     text: 'No puedes obtener un módulo entre cero',
                     imageUrl: image_url
@@ -193,7 +193,7 @@ var opValidate = function( program ) {
         break;
         case 'root':
             if( (isEven(program.num1) && program.num2 < 0) || (program.num1 == 0 && program.num2 == 0)) {
-                swal({ 
+                swal({
                     title: 'Operación inválida',
                     text: 'No puedes obtener la raíz par de un número negativo, ni la raíz cero de cero',
                     imageUrl: image_url
@@ -241,6 +241,7 @@ var bashGenerate = function( ini , end ) {
     var span_id;
     var span_mte;
     var contenido;
+    var total_time = 0;
     var bashes_section = document.getElementById( 'bashes' );
     var bashes_div     = document.createElement( "div" );
     bashes_div.setAttribute( 'id' , 'current-bash' );
@@ -252,11 +253,14 @@ var bashGenerate = function( ini , end ) {
         span_id.appendChild( contenido );
         span_id.setAttribute( 'class' , 'left' );
         contenido = document.createTextNode( programs[i].max_time );
+        total_time += parseInt( programs[i].max_time ) + 1;
         span_mte.appendChild( contenido );
         span_mte.setAttribute( 'class' , 'right' );
         bashes_div.appendChild( span_id );
         bashes_div.appendChild( span_mte );
     }
+    console.log('total_time desde bashGenerate: ' + total_time);
+    return total_time;
 }
 var bashRemove = function() {
     var old_bash = document.getElementById('current-bash');
@@ -289,33 +293,35 @@ var getOperation = function( n1 , n2 , op ) {
     }
     return operation;
 }
-var excecute_process = function( limit , total_time , past_time , remaining_time ) {
+var excecute_process = function( limit , total_time , past_time , remaining_time , last ) {
     var i = 0;
-    console.log('limite: ' + limit);
-    //setTimeout(function(){
         var process = setInterval( function() {
             if( i < limit )  {
+                console.log('i = ' + i);
                 i ++;
                 total_time.value ++;
                 past_time.value ++;
                 remaining_time.value --;
             }
             else {
+                if( last ) {
+                    bashRemove();
+                }
                 clearInterval( process );
             }
         }, 1000 );
-    //}, 1000);
 }
 var excecute_bash = function( index , end , inputs ) {
     console.log('antes del for i = ' + index);
     var time_sleep       = 0;
     var total_time_sleep = 0;
     var ini              = index;
+    var last             = false;
     for( ; index < end; index ++ ) {
         (function( ind ) {
             if ( ind > ini ) {
                 time_sleep = programs[ind-1].max_time;
-                total_time_sleep += parseInt( time_sleep );
+                total_time_sleep += parseInt( time_sleep ) + 1;
             }
             setTimeout( function() {
                 console.log('En del for i = ' + ind);
@@ -325,9 +331,12 @@ var excecute_bash = function( index , end , inputs ) {
                 inputs[3].value = programs[ind].id_program;
                 inputs[4].value = 0;
                 inputs[5].value = programs[ind].max_time;
-                excecute_process( programs[ind].max_time , inputs[6] , inputs[4] , inputs[5] );
+                excecute_process( programs[ind].max_time , inputs[6] , inputs[4] , inputs[5] , last );
+                if( ind === end - 1 ) {
+                    last = true;
+                }
                 console.log('Tiempo de dormir: ' + total_time_sleep);
-            }, (total_time_sleep /*+ 1*/) * 1000);
+            }, (total_time_sleep) * 1000 );
         })(index);
     }
 }
@@ -354,17 +363,30 @@ var excecute = function() {
     }
     var i,j,timer;
     i = 0;
+    var total_time = 0;
+    var sleep_time = 0;
     for( i = 0; i < num_bashes; i ++) {
-        secondary_limit = i * 6 + 6;
-        if( i === num_bashes - 1 ) {
-            finish_round = true;
-            secondary_limit = i * 6 + remaining;
-        }
-        bashGenerate( i , secondary_limit );
+        (function( index , n_bashes ) { //Función anónima autoejecutable, fue lo último agregado, falta el timeout que será llamado aquí.
+            setTimeout(function(){
+                sleep_time += total_time;
+                secondary_limit = index * 6 + 6;
+                if( index === n_bashes - 1 ) {
+                    finish_round = true;
+                    if( exact ) {
+                        secondary_limit = index * 6 + 6;
+                    }
+                    else {
+                        secondary_limit = index * 6 + remaining;
+                    }
+                }
+                total_time += bashGenerate( index * 6 , secondary_limit );
+                console.log( 'index = ' + index + ', secondary_limit = ' + secondary_limit );
 
-        excecute_bash( i * 6 , secondary_limit , inputs );
+                excecute_bash( index * 6 , secondary_limit , inputs );
 
-        bashRemove();
-        console.log('lote' + i);
+                console.log('lote' + index);
+                console.log('sleep_time = ' + sleep_time);
+            }, sleep_time * 1000);//que duerma lo que tardó el lote anterior, no lo que tarda éste
+        })( i , num_bashes);
     }
 }
