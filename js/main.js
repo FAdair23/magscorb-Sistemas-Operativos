@@ -16,17 +16,18 @@ var removeError = function( node ) {
 }
 var restart = function() {
     var i;
-    var inputs = new Array();
-    inputs[0]  = document.getElementById( 'name' );
-    inputs[1]  = document.getElementById( 'num1' );
-    inputs[2]  = document.getElementById( 'op' );
-    inputs[3]  = document.getElementById( 'num2' );
-    inputs[4]  = document.getElementById( 'max-time' );
-    inputs[5]  = document.getElementById( 'id-program' );
-    for( i = 0 ; i < inputs.length ; i ++ ) {
-        inputs[i].value = '';
+    var inputs = {
+        inputName: document.getElementById( 'name' ),
+        inputNum1: document.getElementById( 'num1' ),
+        inputOp: document.getElementById( 'op' ),
+        inputNum2: document.getElementById( 'num2' ),
+        inputMaxTime: document.getElementById( 'max-time' ),
+        inputIdProgram: document.getElementById( 'id-program' )
+    };
+    for (var key in inputs) {
+        inputs[key].value = '';
     }
-    inputs[2].value = 'none';
+    inputs.inputOp.value = 'none';
 }
 var guardar = function() {
     var current_prog = validate();
@@ -52,54 +53,55 @@ var guardar = function() {
     }
 }
 var validate = function() {
-    var current_prog  = false;
+    var current_prog  = null;
     var error_message = '';
-    var inputs        = new Array();
-    inputs[0]         = document.getElementById( 'name' );
-    inputs[1]         = document.getElementById( 'num1' );
-    inputs[2]         = document.getElementById( 'op' );
-    inputs[3]         = document.getElementById( 'num2' );
-    inputs[4]         = document.getElementById( 'max-time' );
-    inputs[5]         = document.getElementById( 'id-program' );
-    var errors        = 0;
 
-    for (var i = 0; i < inputs.length; i++) {
-        if( inputs[i].value.trim() === '' ) {
-            if( inputs[i].getAttribute( 'class' ) !== 'error' ) {
-                inputs[i].setAttribute( 'class' , 'error' );
+    var inputs = {
+        inputName: document.getElementById('name'),
+        inputNum1: document.getElementById('num1'),
+        inputOp: document.getElementById('op'),
+        inputNum2: document.getElementById('num2'),
+        inputMaxTime: document.getElementById('max-time'),
+        inputIdProgram: document.getElementById('id-program')
+    };
+    var errors        = 0;
+    for (var key in inputs) {
+        if( inputs[key].value.trim() === '' ) {
+            if( inputs[key].getAttribute( 'class' ) !== 'error' ) {
+                inputs[key].setAttribute( 'class' , 'error' );
                 error_message = 'Campo requerido';
-                appendError( inputs[i] , error_message );
+                appendError( inputs[key] , error_message );
             }
             errors ++;
         }
-        else if ( i === 2 ) {
-            if( inputs[i].value === 'none' ) {
-                if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                    removeError( inputs[i] );
+        else if ( key === 'input_op' ) {
+            if( inputs[key].value === 'none' ) {
+                if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                    removeError( inputs[key] );
                 }
-                inputs[i].setAttribute( 'class' , 'error' );
+                inputs[key].setAttribute( 'class' , 'error' );
                 error_message = 'Selecciona operación!';
-                appendError( inputs[i] , error_message );
+                appendError( inputs[key] , error_message );
                 errors ++;
             }
-            else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                removeError( inputs[i] );
+            else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                removeError( inputs[key] );
             }
         }
-        else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-            removeError( inputs[i] );
+        else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+            removeError( inputs[key] );
         }
     }
 
     if( errors === 0 ) {
-        current_prog = new Object();
-
-        current_prog.name       = inputs[0].value;
-        current_prog.num1       = inputs[1].value;
-        current_prog.op         = inputs[2].value;
-        current_prog.num2       = inputs[3].value;
-        current_prog.max_time   = inputs[4].value;
-        current_prog.id_program = inputs[5].value;
+        current_prog = {
+            name: inputs['inputName'].value,
+            num1: inputs['inputNum1'].value,
+            op: inputs['inputOp'].value,
+            num2: inputs['inputNum2'].value,
+            max_time: inputs['inputMaxTime'].value,
+            id_program: inputs['inputIdProgram'].value
+        };
     }
 	return current_prog;
 }
@@ -114,7 +116,7 @@ var getImageUrl = function() {
 var opValidate = function( program ) {
     var valid = true;
     var image_url = getImageUrl();
-    switch( program.op ) {
+    switch ( program.op ) {
         case 'division':
             if( program.num2 == 0 ) {
                 swal({
@@ -136,7 +138,7 @@ var opValidate = function( program ) {
             }
         break;
         case 'root':
-            if( (isEven(program.num1) && program.num2 < 0) || (program.num1 == 0 && program.num2 == 0)) {
+            if ( (isEven(program.num1) && program.num2 < 0) || (program.num1 == 0 && program.num2 == 0)) {
                 swal({
                     title: 'Operación inválida',
                     text: 'No puedes obtener la raíz par de un número negativo, ni la raíz cero de cero',
@@ -173,7 +175,7 @@ function root( x , n ) {
 var idValidation = function( id ) {
     var valid = true;
     for (var i = programs.length - 1; i >= 0; i--) {
-        if( programs[i].id_program == id ) {
+        if ( programs[i].id_program == id ) {
             valid = false;
             break;
         }
@@ -185,18 +187,18 @@ var bashGenerate = function( ini , end ) {
     var span_id;
     var span_mte;
     var content;
-    var total_time = 0;
+    var total_time     = 0;
     var bashes_section = document.getElementById( 'bashes' );
     var bashes_div     = document.createElement( "div" );
     bashes_div.setAttribute( 'id' , 'current-bash' );
     bashes_section.appendChild( bashes_div );
-    for( i = ini; i < end; i ++ ) {
+    for ( i = ini; i < end; i ++ ) {
         span_id   = document.createElement( "span" );
         span_mte  = document.createElement( "span" );
-        content = document.createTextNode( programs[i].id_program );
+        content   = document.createTextNode( programs[i].id_program );
         span_id.appendChild( content );
         span_id.setAttribute( 'class' , 'left' );
-        content = document.createTextNode( programs[i].max_time );
+        content     = document.createTextNode( programs[i].max_time );
         total_time += parseInt( programs[i].max_time ) + 1;
         span_mte.appendChild( content );
         span_mte.setAttribute( 'class' , 'right' );
@@ -213,7 +215,7 @@ var bashRemove = function() {
 }
 var getOperation = function( n1 , n2 , op ) {
     var operation;
-    switch( op ) {
+    switch ( op ) {
         case 'sum' :
             operation = n1 + " + " + n2;
         break;
@@ -229,9 +231,6 @@ var getOperation = function( n1 , n2 , op ) {
         case 'module' :
             operation = n1 + " módulo " + n2;
         break;
-        case 'percent' :
-            operation = n1 + " % " + n2;
-        break;
         case 'root' :
             operation = "raíz(" + n1 + "," + n2 + ")";
         break;
@@ -241,7 +240,7 @@ var getOperation = function( n1 , n2 , op ) {
 var excecute_process = function( limit , total_time , past_time , remaining_time , last ) {
     var i = 0;
         var process = setInterval( function() {
-            if( i < limit )  {
+            if ( i < limit )  {
                 i ++;
                 total_time.value ++;
                 past_time.value ++;
@@ -260,31 +259,37 @@ var excecute_bash = function( index , end , inputs ) {
     var total_time_sleep = 0;
     var ini              = index;
     var last             = false;
-    for( ; index < end; index ++ ) {
+    while ( index < end ) {
         (function( ind ) {
             if ( ind > ini ) {
                 time_sleep = programs[ind-1].max_time;
                 total_time_sleep += parseInt( time_sleep ) + 1;
             }
             setTimeout( function() {
-                inputs[0].value = programs[ind].name;
-                inputs[1].value = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
-                inputs[2].value = programs[ind].max_time;
-                inputs[3].value = programs[ind].id_program;
-                inputs[4].value = 0;
-                inputs[5].value = programs[ind].max_time;
-                excecute_process( programs[ind].max_time , inputs[6] , inputs[4] , inputs[5] , last );
+                inputs.inputName.value         = programs[ind].name;
+                inputs.inputOp.value           = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
+                inputs.inputMaxTime.value      = programs[ind].max_time;
+                inputs.inputId.value           = programs[ind].id_program;
+                inputs.inputPastTime.value     = 0;
+                inputs.inputRemaininTime.value = programs[ind].max_time;
+                excecute_process(programs[ind].max_time,
+                    inputs.inputTotalTime,
+                    inputs.inputPastTime,
+                    inputs.inputRemaininTime,
+                    last
+                );
                 if( ind === end - 1 ) {
                     last = true;
                 }
             }, (total_time_sleep) * 1000 );
         })(index);
+        index++;
     }
 }
 var getSleepTimeByBash = function( ini , end ) {
     var i;
     var total_time = 0;
-    for( i = ini; i < end; i ++ ) {
+    for ( i = ini; i < end; i ++ ) {
         total_time += parseInt( programs[i].max_time ) + 1;
     }
     return total_time;
@@ -296,22 +301,20 @@ var excecute = function() {
     var finish_round = false;
     var secondary_limit;
 
-    var input_name           = document.getElementById('name-process');
-    var input_op             = document.getElementById('op-process');
-    var input_max_time       = document.getElementById('time-process');
-    var input_id             = document.getElementById('id-process');
-    var input_past_time      = document.getElementById('past-time-process');
-    var input_remaining_time = document.getElementById('remaining-time-process');
-
-    var input_total_time = document.getElementById('total-time');
-
-    var inputs = [input_name,input_op,input_max_time,input_id,input_past_time,input_remaining_time,input_total_time];
+    var inputs = {
+        inputName: document.getElementById('name-process'),
+        inputOp: document.getElementById('op-process'),
+        inputMaxTime: document.getElementById('time-process'),
+        inputId: document.getElementById('id-process'),
+        inputPastTime: document.getElementById('past-time-process'),
+        inputRemaininTime: document.getElementById('remaining-time-process'),
+        inputTotalTime: document.getElementById('total-time')
+    };
 
     if( !exact ) {
         num_bashes ++;
     }
-    var i,j,timer;
-    i = 0;
+    var i,timer;
     var total_time   = 0;
     var sleep_times  = [];
     var sleep_time   = 0;
@@ -331,25 +334,25 @@ var excecute = function() {
         sleep_time += getSleepTimeByBash( i * progsByBash, secondary_limit );
     }
     for( i = 0; i < num_bashes; i ++ ) {
-            (function( index , n_bashes ) {
-                setTimeout(function(){
-                    secondary_limit = index * progsByBash + progsByBash;
-                    if( index === n_bashes - 1 ) {
-                        finish_round = true;
-                        if( exact ) {
-                            secondary_limit = index * progsByBash + progsByBash;
-                        }
-                        else {
-                            secondary_limit = index * progsByBash + remaining;
-                        }
+        (function( index , n_bashes ) {
+            setTimeout(function(){
+                secondary_limit = index * progsByBash + progsByBash;
+                if( index === n_bashes - 1 ) {
+                    finish_round = true;
+                    if( exact ) {
+                        secondary_limit = index * progsByBash + progsByBash;
                     }
-                    bashRemove();
-                    total_time += bashGenerate( index * progsByBash , secondary_limit );
-                    sleep_time += total_time;
+                    else {
+                        secondary_limit = index * progsByBash + remaining;
+                    }
+                }
+                bashRemove();
+                total_time += bashGenerate( index * progsByBash , secondary_limit );
+                sleep_time += total_time;
 
-                    excecute_bash( index * progsByBash , secondary_limit, inputs );
+                excecute_bash( index * progsByBash , secondary_limit, inputs );
 
-                }, sleep_times[index] * 1000);
-            })( i , num_bashes);
+            }, sleep_times[index] * 1000);
+        })( i , num_bashes);
     }
 }
