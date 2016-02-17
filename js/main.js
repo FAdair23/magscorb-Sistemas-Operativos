@@ -1,5 +1,6 @@
-var programs = new Array();
-var counter = 0;
+var programs      = new Array();
+var counter       = 0;
+const progsByBash = 4;
 var appendError = function( node , error_message ) {
     var miPadre      = node.parentNode;
     var errorSpan    = document.createElement( 'span' );
@@ -22,7 +23,7 @@ var restart = function() {
     inputs[3]  = document.getElementById( 'num2' );
     inputs[4]  = document.getElementById( 'max-time' );
     inputs[5]  = document.getElementById( 'id-program' );
-    for( i = 0 ; i < 6 ; i ++ ) {
+    for( i = 0 ; i < inputs.length ; i ++ ) {
         inputs[i].value = '';
     }
     inputs[2].value = 'none';
@@ -62,7 +63,7 @@ var validate = function() {
     inputs[5]         = document.getElementById( 'id-program' );
     var errors        = 0;
 
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < inputs.length; i++) {
         if( inputs[i].value.trim() === '' ) {
             if( inputs[i].getAttribute( 'class' ) !== 'error' ) {
                 inputs[i].setAttribute( 'class' , 'error' );
@@ -71,47 +72,18 @@ var validate = function() {
             }
             errors ++;
         }
-        else if ( i === 2 || i === 4 ||  i === 5  ) {
-            switch(i) {
-                case 2: if( inputs[i].value === 'none' ) {
-                            if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                                removeError( inputs[i] );
-                            }
-                            inputs[i].setAttribute( 'class' , 'error' );
-                            error_message = 'Selecciona operación!';
-                            appendError( inputs[i] , error_message );
-                            errors ++;
-                        }
-                        else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                            removeError( inputs[i] );
-                        }
-                break;
-                case 4: if( inputs[i].value < 1 ) {
-                            if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                                removeError( inputs[i] );
-                            }
-                            inputs[i].setAttribute( 'class' , 'error' );
-                            error_message = 'El número debe ser positivo!';
-                            appendError( inputs[i] , error_message );
-                            errors ++;
-                        }
-                        else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                            removeError( inputs[i] );
-                        }
-                break;
-                case 5: if( inputs[i].value < 1 ) {
-                            if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                                removeError( inputs[i] );
-                            }
-                            inputs[i].setAttribute( 'class' , 'error' );
-                            error_message = 'El número debe ser positivo!';
-                            appendError( inputs[i] , error_message );
-                            errors ++;
-                        }
-                        else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
-                            removeError( inputs[i] );
-                        }
-                break;
+        else if ( i === 2 ) {
+            if( inputs[i].value === 'none' ) {
+                if( inputs[i].getAttribute( 'class' ) === 'error' ) {
+                    removeError( inputs[i] );
+                }
+                inputs[i].setAttribute( 'class' , 'error' );
+                error_message = 'Selecciona operación!';
+                appendError( inputs[i] , error_message );
+                errors ++;
+            }
+            else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
+                removeError( inputs[i] );
             }
         }
         else if( inputs[i].getAttribute( 'class' ) === 'error' ) {
@@ -128,34 +100,6 @@ var validate = function() {
         current_prog.num2       = inputs[3].value;
         current_prog.max_time   = inputs[4].value;
         current_prog.id_program = inputs[5].value;
-
-        if( current_prog.op === 'none' ) {
-            if( inputs[2].getAttribute( 'class' ) === 'error' ) {
-                removeError( inputs[2] );
-            }
-            error_message = 'Selecciona operación!';
-            inputs[2].setAttribute( 'class' , 'error' );
-            appendError( inputs[2] , error_message );
-            errors ++;
-        }
-        if( current_prog.max_time < 1 ) {
-            if( inputs[4].getAttribute( 'class' ) === 'error' ) {
-                removeError( inputs[4] );
-            }
-            error_message = 'El número debe ser positivo!';
-            inputs[4].setAttribute( 'class' , 'error' );
-            appendError( inputs[4] , error_message );
-            errors ++;
-        }
-        if( current_prog.id_program < 1 ) {
-            if( inputs[5].getAttribute( 'class' ) === 'error' ) {
-                removeError( inputs[5] );
-            }
-            error_message = 'El número debe ser positivo!';
-            inputs[5].setAttribute( 'class' , 'error' );
-            appendError( inputs[5] , error_message );
-            errors ++;
-        }
     }
 	return current_prog;
 }
@@ -346,8 +290,8 @@ var getSleepTimeByBash = function( ini , end ) {
     return total_time;
 }
 var excecute = function() {
-    var num_bashes   = Math.trunc(counter/6);
-    var remaining    = counter % 6;
+    var num_bashes   = Math.trunc(counter/progsByBash);
+    var remaining    = counter % progsByBash;
     var exact        = remaining ? false : true;
     var finish_round = false;
     var secondary_limit;
@@ -374,36 +318,36 @@ var excecute = function() {
     var finish_round = false;
     for( i = 0; i < num_bashes; i ++ ) {
         sleep_times[i] = sleep_time;
-        secondary_limit = i * 6 + 6;
+        secondary_limit = i * progsByBash + progsByBash;
         if ( i === num_bashes - 1 ) {
             finish_round = true;
             if( exact ) {
-                secondary_limit = i * 6 + 6;
+                secondary_limit = i * progsByBash + progsByBash;
             }
             else {
-                secondary_limit = i * 6 + remaining;
+                secondary_limit = i * progsByBash + remaining;
             }
         }
-        sleep_time += getSleepTimeByBash( i * 6, secondary_limit );
+        sleep_time += getSleepTimeByBash( i * progsByBash, secondary_limit );
     }
     for( i = 0; i < num_bashes; i ++ ) {
             (function( index , n_bashes ) {
                 setTimeout(function(){
-                    secondary_limit = index * 6 + 6;
+                    secondary_limit = index * progsByBash + progsByBash;
                     if( index === n_bashes - 1 ) {
                         finish_round = true;
                         if( exact ) {
-                            secondary_limit = index * 6 + 6;
+                            secondary_limit = index * progsByBash + progsByBash;
                         }
                         else {
-                            secondary_limit = index * 6 + remaining;
+                            secondary_limit = index * progsByBash + remaining;
                         }
                     }
                     bashRemove();
-                    total_time += bashGenerate( index * 6 , secondary_limit );
+                    total_time += bashGenerate( index * progsByBash , secondary_limit );
                     sleep_time += total_time;
 
-                    excecute_bash( index * 6 , secondary_limit, inputs );
+                    excecute_bash( index * progsByBash , secondary_limit, inputs );
 
                 }, sleep_times[index] * 1000);
             })( i , num_bashes);
