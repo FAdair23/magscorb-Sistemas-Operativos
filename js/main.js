@@ -1,18 +1,18 @@
-var programs      = new Array();
-var counter       = 0;
-const progsByBash = 4;
-var appendError = function( node , error_message ) {
-    var miPadre      = node.parentNode;
-    var errorSpan    = document.createElement( 'span' );
-    var errorMessage = document.createTextNode( error_message );
-    errorSpan.appendChild( errorMessage );
-    miPadre.appendChild( errorSpan );
+var programs       = [];
+var counter        = 0;
+const progsByBatch = 4;
+var appendError = function( node , errorMessage ) {
+    var parent    = node.parentNode;
+    var errorSpan = document.createElement( 'span' );
+    var message   = document.createTextNode( errorMessage );
+    errorSpan.appendChild( message );
+    parent.appendChild( errorSpan );
 }
 var removeError = function( node ) {
     node.removeAttribute( 'class' );
-    var miPadre      = node.parentNode;
+    var parent       = node.parentNode;
     var errorSpan    = node.nextElementSibling;
-    miPadre.removeChild( errorSpan );
+    parent.removeChild( errorSpan );
 }
 var restart = function() {
     var i;
@@ -30,31 +30,31 @@ var restart = function() {
     inputs.inputOp.value = 'none';
 }
 var guardar = function() {
-    var current_prog = validate();
-    var counter_span = document.getElementById('counter');
-    if( current_prog ) {
-        if( opValidate( current_prog ) ) {
-        	if( idValidation( current_prog.id_program ) ) {
-        		programs[counter] = current_prog;
+    var currentProg = validate();
+    var counterSpan = document.getElementById('counter');
+    if( currentProg ) {
+        if( opValidate( currentProg ) ) {
+        	if( idValidation( currentProg.idProgram ) ) {
+        		programs[counter] = currentProg;
 	            counter ++;
-	            swal("Muy bien " + current_prog.name , "Tu programa ha sido guardado" , "success");
-	            counter_span.innerText = counter;
+	            swal("Muy bien " + currentProg.name , "Tu programa ha sido guardado" , "success");
+	            counterSpan.innerText = counter;
 	            restart();
         	}
         	else {
-        		var image_url = getImageUrl();
+        		var imageUrl = getImageUrl();
         		swal({
                 	title: 'Id inválido',
                     text: 'El número de programa que intentas ingresar, ya ha sido registrado',
-                    imageUrl: image_url
+                    imageUrl: imageUrl
                 });
         	}
         }
     }
 }
 var validate = function() {
-    var current_prog  = null;
-    var error_message = '';
+    var currentProg  = null;
+    var errorMessage = '';
 
     var inputs = {
         inputName: document.getElementById('name'),
@@ -69,19 +69,19 @@ var validate = function() {
         if( inputs[key].value.trim() === '' ) {
             if( inputs[key].getAttribute( 'class' ) !== 'error' ) {
                 inputs[key].setAttribute( 'class' , 'error' );
-                error_message = 'Campo requerido';
-                appendError( inputs[key] , error_message );
+                errorMessage = 'Campo requerido';
+                appendError( inputs[key] , errorMessage );
             }
             errors ++;
         }
-        else if ( key === 'input_op' ) {
+        else if ( key === 'inputOp' ) {
             if( inputs[key].value === 'none' ) {
                 if( inputs[key].getAttribute( 'class' ) === 'error' ) {
                     removeError( inputs[key] );
                 }
                 inputs[key].setAttribute( 'class' , 'error' );
-                error_message = 'Selecciona operación!';
-                appendError( inputs[key] , error_message );
+                errorMessage = 'Selecciona operación!';
+                appendError( inputs[key] , errorMessage );
                 errors ++;
             }
             else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
@@ -94,35 +94,35 @@ var validate = function() {
     }
 
     if( errors === 0 ) {
-        current_prog = {
+        currentProg = {
             name: inputs['inputName'].value,
             num1: inputs['inputNum1'].value,
             op: inputs['inputOp'].value,
             num2: inputs['inputNum2'].value,
-            max_time: inputs['inputMaxTime'].value,
-            id_program: inputs['inputIdProgram'].value
+            maxTime: inputs['inputMaxTime'].value,
+            idProgram: inputs['inputIdProgram'].value
         };
     }
-	return current_prog;
+	return currentProg;
 }
 var getImageUrl = function() {
-	var rand = Math.round((Math.random() * 100)) % 2;
-    var image_url = "images/error.png";
+	var rand     = Math.round((Math.random() * 100)) % 2;
+    var imageUrl = "images/error.png";
     if ( rand ) {
-        image_url = "images/no.png";
+        imageUrl = "images/no.png";
     }
-    return image_url;
+    return imageUrl;
 }
 var opValidate = function( program ) {
     var valid = true;
-    var image_url = getImageUrl();
+    var imageUrl = getImageUrl();
     switch ( program.op ) {
         case 'division':
             if( program.num2 == 0 ) {
                 swal({
                 	title: 'Operación inválida',
                     text: 'No puedes hacer una división entre cero',
-                    imageUrl: image_url
+                    imageUrl: imageUrl
                 });
                 valid = false;
             }
@@ -132,7 +132,7 @@ var opValidate = function( program ) {
                 swal({
                 	title: 'Operación inválida',
                     text: 'No puedes obtener un módulo entre cero',
-                    imageUrl: image_url
+                    imageUrl: imageUrl
                 });
                 valid = false;
             }
@@ -142,7 +142,7 @@ var opValidate = function( program ) {
                 swal({
                     title: 'Operación inválida',
                     text: 'No puedes obtener la raíz par de un número negativo, ni la raíz cero de cero',
-                    imageUrl: image_url
+                    imageUrl: imageUrl
                 });
                 valid = false;
             }
@@ -175,42 +175,43 @@ function root( x , n ) {
 var idValidation = function( id ) {
     var valid = true;
     for (var i = programs.length - 1; i >= 0; i--) {
-        if ( programs[i].id_program == id ) {
+        if ( programs[i].idProgram == id ) {
             valid = false;
             break;
         }
     }
     return valid;
 }
-var bashGenerate = function( ini , end ) {
+var batchGenerate = function( ini , end ) {
     var i;
-    var span_id;
-    var span_mte;
+    var spanId;
+    var spanMte;
     var content;
-    var total_time     = 0;
-    var bashes_section = document.getElementById( 'bashes' );
-    var bashes_div     = document.createElement( "div" );
-    bashes_div.setAttribute( 'id' , 'current-bash' );
-    bashes_section.appendChild( bashes_div );
+    var totalTime      = 0;
+    var batchesSection = document.getElementById( 'batches' );
+    var batchesDiv     = document.createElement( "div" );
+    batchesDiv.setAttribute( 'id' , 'current-batch' );
+    batchesSection.appendChild( batchesDiv );
     for ( i = ini; i < end; i ++ ) {
-        span_id   = document.createElement( "span" );
-        span_mte  = document.createElement( "span" );
-        content   = document.createTextNode( programs[i].id_program );
-        span_id.appendChild( content );
-        span_id.setAttribute( 'class' , 'left' );
-        content     = document.createTextNode( programs[i].max_time );
-        total_time += parseInt( programs[i].max_time ) + 1;
-        span_mte.appendChild( content );
-        span_mte.setAttribute( 'class' , 'right' );
-        bashes_div.appendChild( span_id );
-        bashes_div.appendChild( span_mte );
+        spanId    = document.createElement( "span" );
+        spanMte   = document.createElement( "span" );
+        content   = document.createTextNode( programs[i].idProgram );
+        spanId.appendChild( content );
+        spanId.setAttribute( 'class' , 'left' );
+        content     = document.createTextNode( programs[i].maxTime );
+        totalTime += parseInt( programs[i].maxTime ) + 1;
+        spanMte.appendChild( content );
+        spanMte.setAttribute( 'class' , 'right' );
+        batchesDiv.appendChild( spanId );
+        batchesDiv.appendChild( spanMte );
     }
-    return total_time;
+    return totalTime;
 }
-var bashRemove = function() {
-    var old_bash = document.getElementById('current-bash');
-    if (old_bash) {
-        old_bash.remove();
+var batchRemove = function( pendingBatches ) {
+    var oldBatch = document.getElementById('current-batch');
+    if (oldBatch) {
+        pendingBatches.value = pendingBatches.value - 1;
+        oldBatch.remove();
     }
 }
 var getOperation = function( n1 , n2 , op ) {
@@ -237,122 +238,112 @@ var getOperation = function( n1 , n2 , op ) {
     }
     return operation;
 }
-var excecute_process = function( limit , total_time , past_time , remaining_time , last ) {
-    var i = 0;
-        var process = setInterval( function() {
-            if ( i < limit )  {
-                i ++;
-                total_time.value ++;
-                past_time.value ++;
-                remaining_time.value --;
-            }
-            else {
-                if( last ) {
-                    bashRemove();
-                }
-                clearInterval( process );
-            }
-        }, 1000 );
+var excecuteProcess = function( limit, totalTime, pastTime, remainingTime ) {
+    var i         = 0;
+    var myProcess = setInterval( function() {
+        if ( i < limit )  {
+            i ++;
+            totalTime.value ++;
+            pastTime.value ++;
+            remainingTime.value --;
+        } else {
+            clearInterval( myProcess );
+        }
+    }, 1000 );
 }
-var excecute_bash = function( index , end , inputs ) {
-    var time_sleep       = 0;
-    var total_time_sleep = 0;
-    var ini              = index;
-    var last             = false;
+var excecuteBatch = function( index, end, inputs ) {
+    var timeSleep      = 0;
+    var totalTimeSleep = 0;
+    var ini            = index;
     while ( index < end ) {
         (function( ind ) {
             if ( ind > ini ) {
-                time_sleep = programs[ind-1].max_time;
-                total_time_sleep += parseInt( time_sleep ) + 1;
+                timeSleep       = programs[ind-1].maxTime;
+                totalTimeSleep += parseInt( timeSleep ) + 1;
             }
             setTimeout( function() {
                 inputs.inputName.value         = programs[ind].name;
                 inputs.inputOp.value           = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
-                inputs.inputMaxTime.value      = programs[ind].max_time;
-                inputs.inputId.value           = programs[ind].id_program;
+                inputs.inputMaxTime.value      = programs[ind].maxTime;
+                inputs.inputId.value           = programs[ind].idProgram;
                 inputs.inputPastTime.value     = 0;
-                inputs.inputRemaininTime.value = programs[ind].max_time;
-                excecute_process(programs[ind].max_time,
+                inputs.inputRemaininTime.value = programs[ind].maxTime;
+                excecuteProcess(programs[ind].maxTime,
                     inputs.inputTotalTime,
                     inputs.inputPastTime,
-                    inputs.inputRemaininTime,
-                    last
+                    inputs.inputRemaininTime
                 );
-                if( ind === end - 1 ) {
-                    last = true;
-                }
-            }, (total_time_sleep) * 1000 );
+            }, (totalTimeSleep) * 1000 );
         })(index);
         index++;
     }
 }
-var getSleepTimeByBash = function( ini , end ) {
+var getSleepTimeByBatch = function( ini , end ) {
     var i;
-    var total_time = 0;
+    var totalTime = 0;
     for ( i = ini; i < end; i ++ ) {
-        total_time += parseInt( programs[i].max_time ) + 1;
+        totalTime += parseInt( programs[i].maxTime ) + 1;
     }
-    return total_time;
+    return totalTime;
 }
 var excecute = function() {
-    var num_bashes   = Math.trunc(counter/progsByBash);
-    var remaining    = counter % progsByBash;
-    var exact        = remaining ? false : true;
-    var finish_round = false;
-    var secondary_limit;
-
-    var inputs = {
+    var i,timer,secondaryLimit;
+    var numBatches  = Math.ceil(counter/progsByBatch);
+    var remaining   = counter % progsByBatch;
+    var exact       = remaining ? false : true;
+    var finishRound = false;
+    var totalTime   = 0;
+    var sleepTimes  = [];
+    var sleepTime   = 0;
+    var finishRound = false;
+    var inputs      = {
         inputName: document.getElementById('name-process'),
         inputOp: document.getElementById('op-process'),
         inputMaxTime: document.getElementById('time-process'),
         inputId: document.getElementById('id-process'),
         inputPastTime: document.getElementById('past-time-process'),
         inputRemaininTime: document.getElementById('remaining-time-process'),
-        inputTotalTime: document.getElementById('total-time')
+        inputTotalTime: document.getElementById('total-time'),
+        inputPendingBatches: document.getElementById('pending-batches')
     };
-
-    if( !exact ) {
-        num_bashes ++;
-    }
-    var i,timer;
-    var total_time   = 0;
-    var sleep_times  = [];
-    var sleep_time   = 0;
-    var finish_round = false;
-    for( i = 0; i < num_bashes; i ++ ) {
-        sleep_times[i] = sleep_time;
-        secondary_limit = i * progsByBash + progsByBash;
-        if ( i === num_bashes - 1 ) {
-            finish_round = true;
+    //Inicialización del input de "lotes pendientes"
+    inputs.inputPendingBatches.value = numBatches - 1;
+    //Cálculo de los tiempos que debe detenerse el for principal para cada iteración.
+    for( i = 0; i < numBatches; i ++ ) {
+        sleepTimes[i]  = sleepTime;
+        secondaryLimit = i * progsByBatch + progsByBatch;
+        if ( i === numBatches - 1 ) {
+            finishRound = true;
             if( exact ) {
-                secondary_limit = i * progsByBash + progsByBash;
+                secondaryLimit = i * progsByBatch + progsByBatch;
             }
             else {
-                secondary_limit = i * progsByBash + remaining;
+                secondaryLimit = i * progsByBatch + remaining;
             }
         }
-        sleep_time += getSleepTimeByBash( i * progsByBash, secondary_limit );
+        sleepTime += getSleepTimeByBatch( i * progsByBatch, secondaryLimit );
     }
-    for( i = 0; i < num_bashes; i ++ ) {
-        (function( index , n_bashes ) {
-            setTimeout(function(){
-                secondary_limit = index * progsByBash + progsByBash;
-                if( index === n_bashes - 1 ) {
-                    finish_round = true;
+    //Inicio del for principal
+    for( i = 0; i < numBatches; i ++ ) {
+        (function( index , nBatches ) {
+            setTimeout(function() {
+                secondaryLimit = index * progsByBatch + progsByBatch;
+                if( index === nBatches - 1 ) {
+                    finishRound = true;
                     if( exact ) {
-                        secondary_limit = index * progsByBash + progsByBash;
+                        secondaryLimit = index * progsByBatch + progsByBatch;
                     }
                     else {
-                        secondary_limit = index * progsByBash + remaining;
+                        secondaryLimit = index * progsByBatch + remaining;
                     }
                 }
-                bashRemove();
-                total_time += bashGenerate( index * progsByBash , secondary_limit );
-                sleep_time += total_time;
+                batchRemove( inputs.inputPendingBatches );
+                totalTime += batchGenerate( index * progsByBatch , secondaryLimit );
+                sleepTime += totalTime;
 
-                excecute_bash( index * progsByBash , secondary_limit, inputs );
+                excecuteBatch( index * progsByBatch , secondaryLimit, inputs );
 
-            }, sleep_times[index] * 1000);
-        })( i , num_bashes);
+            }, sleepTimes[index] * 1000);
+        })( i , numBatches);
     }
 }
