@@ -1,6 +1,12 @@
-var programs       = [];
-var counter        = 0;
-const progsByBatch = 4;
+var programs         = [];
+var counter          = 0;
+const progsByBatch   = 4;
+const addition       = 1;
+const substraction   = 2;
+const multiplication = 3;
+const division       = 4;
+const module         = 5;
+const nroot          = 6;
 var appendError = function( node , errorMessage ) {
     var parent    = node.parentNode;
     var errorSpan = document.createElement( 'span' );
@@ -154,23 +160,21 @@ function isEven( n ) {
     n = Number( n );
     return n === 0 || !!( n && !(n%2) );
 }
-function root( x , n ) {
-    var root;
+function getNRoot( n, x ) {
+    var nroot;
     //Está validado que no se puedan obtener raíces pares de números negativos
     x = Math.abs(x);
-    if( n > 0 ) {
-        n    = 1/n;
-        root = Math.pow( x , n );
-    }
-    else if( n == 0 ) {
+    if ( n > 0 ) {
+        n     = 1/n;
+        nroot = Math.pow( x, n );
+    } else if ( n == 0 ) {
         //Ya validé que no puedan ser n=0 y x=0
-        root = 1;
+        nroot = 1;
+    } else {
+        n     = 1/Math.abs( n );
+        nroot = 1/Math.pow( x, n );
     }
-    else {
-        n    = 1/Math.abs( n );
-        root = 1/Math.pow( x , n );
-    }
-    return root;
+    return nroot;
 }
 var idValidation = function( id ) {
     var valid = true;
@@ -238,7 +242,55 @@ var getOperation = function( n1 , n2 , op ) {
     }
     return operation;
 }
-var excecuteProcess = function( limit, totalTime, pastTime, remainingTime ) {
+var getResultS = function( n1 , n2 , op ) {
+    var result;
+    switch ( op ) {
+        case 'sum' :
+            result = parseFloat(n1) + parseFloat(n2);
+        break;
+        case 'substraction' :
+            result = n1 - n2;
+        break;
+        case 'multiplication' :
+            result = n1 * n2;
+        break;
+        case 'division' :
+            result = n1 / n2;
+        break;
+        case 'module' :
+            result = n1 % n2;
+        break;
+        case 'root' :
+            result = getNRoot( n1, n2 );
+        break;
+    }
+    return result;
+}
+var getOpAndResult = function(index) {
+    var opAndResult = getOperation( programs[index].num1, programs[index].num2, programs[index].op ) + 
+                      ' = ' + getResultS( programs[index].num1, programs[index].num2, programs[index].op);
+    return opAndResult;
+}
+var printResult = function( index ) {
+    var resultsSection  = document.getElementById( 'results' );
+    var spanId          = document.createElement( 'span' );
+    var spanOpAndResult = document.createElement( 'span' );
+    var spanBatchNumber = document.createElement( 'span' );
+    var textId          = document.createTextNode( programs[index].idProgram );
+    var textOpAndResult = document.createTextNode( getOpAndResult(index) );
+    var textBatchNumber = document.createTextNode( Math.ceil((index + 1)/progsByBatch) );
+
+    spanId.setAttribute( 'class', 'col-md-3' );
+    spanOpAndResult.setAttribute( 'class', 'col-md-6' );
+    spanBatchNumber.setAttribute( 'class', 'col-md-3' );
+    spanId.appendChild( textId );
+    spanOpAndResult.appendChild( textOpAndResult );
+    spanBatchNumber.appendChild( textBatchNumber );
+    resultsSection.appendChild( spanId );
+    resultsSection.appendChild( spanOpAndResult );
+    resultsSection.appendChild( spanBatchNumber );
+}
+var excecuteProcess = function( limit, totalTime, pastTime, remainingTime, index ) {
     var i         = 0;
     var myProcess = setInterval( function() {
         if ( i < limit )  {
@@ -247,6 +299,7 @@ var excecuteProcess = function( limit, totalTime, pastTime, remainingTime ) {
             pastTime.value ++;
             remainingTime.value --;
         } else {
+            printResult( index );
             clearInterval( myProcess );
         }
     }, 1000 );
@@ -262,16 +315,18 @@ var excecuteBatch = function( index, end, inputs ) {
                 totalTimeSleep += parseInt( timeSleep ) + 1;
             }
             setTimeout( function() {
-                inputs.inputName.value         = programs[ind].name;
-                inputs.inputOp.value           = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
-                inputs.inputMaxTime.value      = programs[ind].maxTime;
-                inputs.inputId.value           = programs[ind].idProgram;
-                inputs.inputPastTime.value     = 0;
-                inputs.inputRemaininTime.value = programs[ind].maxTime;
-                excecuteProcess(programs[ind].maxTime,
+                inputs.inputName.value          = programs[ind].name;
+                inputs.inputOp.value            = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
+                inputs.inputMaxTime.value       = programs[ind].maxTime;
+                inputs.inputId.value            = programs[ind].idProgram;
+                inputs.inputPastTime.value      = 0;
+                inputs.inputRemainingTime.value = programs[ind].maxTime;
+                excecuteProcess(
+                    programs[ind].maxTime,
                     inputs.inputTotalTime,
                     inputs.inputPastTime,
-                    inputs.inputRemaininTime
+                    inputs.inputRemainingTime,
+                    ind
                 );
             }, (totalTimeSleep) * 1000 );
         })(index);
@@ -302,12 +357,14 @@ var excecute = function() {
         inputMaxTime: document.getElementById('time-process'),
         inputId: document.getElementById('id-process'),
         inputPastTime: document.getElementById('past-time-process'),
-        inputRemaininTime: document.getElementById('remaining-time-process'),
+        inputRemainingTime: document.getElementById('remaining-time-process'),
         inputTotalTime: document.getElementById('total-time'),
         inputPendingBatches: document.getElementById('pending-batches')
     };
-    //Inicialización del input de "lotes pendientes"
-    inputs.inputPendingBatches.value = numBatches - 1;
+    //Inicialización del input de "lotes pendientes" (si es que hay lotes)
+    if ( progsByBatch > 0 ) {
+        inputs.inputPendingBatches.value = numBatches - 1;
+    }
     //Cálculo de los tiempos que debe detenerse el for principal para cada iteración.
     for( i = 0; i < numBatches; i ++ ) {
         sleepTimes[i]  = sleepTime;

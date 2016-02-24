@@ -136,3 +136,14 @@ h2 {
     margin-right: 10px;
     clear: right;
 }
+.col-md-3 {
+    width: 24%;
+    margin: 0 auto;
+    display: inline-block;
+    height: 32px;
+}
+.col-md-6 {
+    width: 48%;
+    margin: 0 auto;
+    display: inline-block;
+}
