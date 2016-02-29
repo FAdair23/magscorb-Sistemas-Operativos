@@ -20,6 +20,14 @@ var removeError = function( node ) {
     var errorSpan    = node.nextElementSibling;
     parent.removeChild( errorSpan );
 }
+var removeFirstProcess = function() {
+    var currentBatch    = document.getElementById('current-batch');
+    var spanWillRemoved = currentBatch.firstChild;
+
+    currentBatch.removeChild(spanWillRemoved);
+    spanWillRemoved = currentBatch.firstChild;
+    currentBatch.removeChild(spanWillRemoved);
+}
 var restart = function() {
     var i;
     var inputs = {
@@ -282,7 +290,7 @@ var printResult = function( index ) {
 
     spanId.setAttribute( 'class', 'col-md-3' );
     spanOpAndResult.setAttribute( 'class', 'col-md-6' );
-    spanBatchNumber.setAttribute( 'class', 'col-md-3' );
+    spanBatchNumber.setAttribute( 'class', 'col-md-3 center-text' );
     spanId.appendChild( textId );
     spanOpAndResult.appendChild( textOpAndResult );
     spanBatchNumber.appendChild( textBatchNumber );
@@ -300,6 +308,9 @@ var excecuteProcess = function( limit, totalTime, pastTime, remainingTime, index
             remainingTime.value --;
         } else {
             printResult( index );
+            if ( (index + 1) % progsByBatch !== 0 || index + 1 === programs.length ) {
+                removeFirstProcess();
+            }
             clearInterval( myProcess );
         }
     }, 1000 );
@@ -341,6 +352,13 @@ var getSleepTimeByBatch = function( ini , end ) {
     }
     return totalTime;
 }
+var changeToExcecutionView = function() {
+    var initForm  = document.getElementById('init-form');
+    var execution = document.getElementById('execution');
+
+    initForm.setAttribute('class', 'hidden');
+    execution.removeAttribute('class');
+}
 var excecute = function() {
     var i,timer,secondaryLimit;
     var numBatches  = Math.ceil(counter/progsByBatch);
@@ -361,6 +379,7 @@ var excecute = function() {
         inputTotalTime: document.getElementById('total-time'),
         inputPendingBatches: document.getElementById('pending-batches')
     };
+    changeToExcecutionView();
     //Inicialización del input de "lotes pendientes" (si es que hay lotes)
     if ( progsByBatch > 0 ) {
         inputs.inputPendingBatches.value = numBatches - 1;
