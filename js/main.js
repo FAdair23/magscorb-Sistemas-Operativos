@@ -81,14 +81,14 @@ var validate = function() {
     var errors        = 0;
     for (var key in inputs) {
         if( inputs[key].value.trim() === '' ) {
-            if( inputs[key].getAttribute( 'class' ) !== 'error' ) {
-                inputs[key].setAttribute( 'class' , 'error' );
-                errorMessage = 'Campo requerido';
-                appendError( inputs[key] , errorMessage );
+            if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                    removeError( inputs[key] );
             }
+            inputs[key].setAttribute( 'class' , 'error' );
+            errorMessage = 'Campo requerido';
+            appendError( inputs[key] , errorMessage );
             errors ++;
-        }
-        else if ( key === 'inputOp' ) {
+        } else if ( key === 'inputOp' ) {
             if( inputs[key].value === 'none' ) {
                 if( inputs[key].getAttribute( 'class' ) === 'error' ) {
                     removeError( inputs[key] );
@@ -97,12 +97,34 @@ var validate = function() {
                 errorMessage = 'Selecciona operación!';
                 appendError( inputs[key] , errorMessage );
                 errors ++;
-            }
-            else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+            } else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
                 removeError( inputs[key] );
             }
-        }
-        else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+        } else if ( key === 'inputId' ) {
+            if( inputs[key].value <= '0' ) {
+                if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                    removeError( inputs[key] );
+                }
+                inputs[key].setAttribute( 'class' , 'error' );
+                errorMessage = 'El Id debe ser mayor a 0';
+                appendError( inputs[key] , errorMessage );
+                errors ++;
+            } else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                removeError( inputs[key] );
+            }
+        } else if ( key === 'inputMaxTime' ) {
+            if( inputs[key].value <= '0' ) {
+                if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                    removeError( inputs[key] );
+                }
+                inputs[key].setAttribute( 'class' , 'error' );
+                errorMessage = 'El tiempo máximo estimado debe ser mayor a 0';
+                appendError( inputs[key] , errorMessage );
+                errors ++;
+            } else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
+                removeError( inputs[key] );
+            }
+        } else if( inputs[key].getAttribute( 'class' ) === 'error' ) {
             removeError( inputs[key] );
         }
     }
@@ -298,7 +320,7 @@ var printResult = function( index ) {
     resultsSection.appendChild( spanOpAndResult );
     resultsSection.appendChild( spanBatchNumber );
 }
-var excecuteProcess = function( limit, totalTime, pastTime, remainingTime, index ) {
+var executeProcess = function( limit, totalTime, pastTime, remainingTime, index ) {
     var i         = 0;
     var myProcess = setInterval( function() {
         if ( i < limit )  {
@@ -315,7 +337,7 @@ var excecuteProcess = function( limit, totalTime, pastTime, remainingTime, index
         }
     }, 1000 );
 }
-var excecuteBatch = function( index, end, inputs ) {
+var executeBatch = function( index, end, inputs ) {
     var timeSleep      = 0;
     var totalTimeSleep = 0;
     var ini            = index;
@@ -332,7 +354,7 @@ var excecuteBatch = function( index, end, inputs ) {
                 inputs.inputId.value            = programs[ind].idProgram;
                 inputs.inputPastTime.value      = 0;
                 inputs.inputRemainingTime.value = programs[ind].maxTime;
-                excecuteProcess(
+                executeProcess(
                     programs[ind].maxTime,
                     inputs.inputTotalTime,
                     inputs.inputPastTime,
@@ -359,7 +381,7 @@ var changeToExcecutionView = function() {
     initForm.setAttribute('class', 'hidden');
     execution.removeAttribute('class');
 }
-var excecute = function() {
+var execute = function() {
     var i,timer,secondaryLimit;
     var numBatches  = Math.ceil(counter/progsByBatch);
     var remaining   = counter % progsByBatch;
@@ -417,7 +439,7 @@ var excecute = function() {
                 totalTime += batchGenerate( index * progsByBatch , secondaryLimit );
                 sleepTime += totalTime;
 
-                excecuteBatch( index * progsByBatch , secondaryLimit, inputs );
+                executeBatch( index * progsByBatch , secondaryLimit, inputs );
 
             }, sleepTimes[index] * 1000);
         })( i , numBatches);
