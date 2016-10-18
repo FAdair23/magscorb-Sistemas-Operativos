@@ -150,41 +150,9 @@ var opValidate = function ( program ) {
                 isValid = false;
             }
         break;
-        /*case 'root':
-            if ( (isEven(program.num1) && program.num2 < 0) || (program.num1 == 0 && program.num2 == 0)) {
-                swal({
-                    title: 'Operación inválida',
-                    text: 'No puedes obtener la raíz par de un número negativo, ni la raíz cero de cero',
-                    imageUrl: imageUrl
-                });
-                isValid = false;
-            }
-        break;*/
     }
     return isValid;
 }
-
-/*var isEven = function ( n ) {
-    n = Number( n );
-    return n === 0 || !!( n && !(n%2) );
-}*/
-
-/*function getNRoot ( n, x ) {
-    var nroot;
-    //Está validado que no se puedan obtener raíces pares de números negativos
-    x = Math.abs(x);
-    if ( n > 0 ) {
-        n     = 1/n;
-        nroot = Math.pow( x, n );
-    } else if ( n == 0 ) {
-        //Ya validé que no puedan ser n=0 y x=0
-        nroot = 1;
-    } else {
-        n     = 1/Math.abs( n );
-        nroot = 1/Math.pow( x, n );
-    }
-    return nroot;
-}*/
 
 var idValidation = function ( id ) {
     var isValid = true;
@@ -249,9 +217,6 @@ var getOperation = function ( n1 , n2 , op ) {
         case 'module' :
             operation = n1 + " módulo " + n2;
         break;
-        /*case 'root' :
-            operation = "raíz(" + n1 + "," + n2 + ")";
-        break;*/
         case 'pow' :
             operation = n1 + "^" + n2;
         break;
@@ -280,9 +245,6 @@ var getResults = function ( n1 , n2 , op ) {
         case 'module' :
             result = n1 % n2;
         break;
-        /*case 'root' :
-            result = getNRoot( n1, n2 );
-        break;*/
         case 'pow' :
             result = Math.pow( n1, n2 );
         break;
