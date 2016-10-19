@@ -2,18 +2,19 @@ var programs         = [];
 var counter          = 0;
 
 //constant for programs by batch
-const PROGS_BY_BATCH = 4;
+const PROGS_BY_BATCH = 5;
 //constants for operations
 const ADDITION       = 1;
 const SUBSTRACTION   = 2;
 const MULTIPLICATION = 3;
 const DIVISION       = 4;
 const MODULE         = 5;
-const N_ROOT         = 6;
+const POW            = 6;
+const PERCENT        = 7;
 //constants for limits to use when generate random numbers
 const MAX_TIME_LIMIT = 10;
 const NUMBER_LIMIT   = 100;
-const OPER_LIMIT     = 6;
+const OPER_LIMIT     = 7;
 
 var appendError = function( node , errorMessage ) {
     var parent    = node.parentNode;
@@ -22,12 +23,14 @@ var appendError = function( node , errorMessage ) {
     errorSpan.appendChild( message );
     parent.appendChild( errorSpan );
 }
+
 var removeError = function( node ) {
     node.removeAttribute( 'class' );
     var parent       = node.parentNode;
     var errorSpan    = node.nextElementSibling;
     parent.removeChild( errorSpan );
 }
+
 var removeFirstProcess = function() {
     var currentBatch    = document.getElementById('current-batch');
     var spanWillRemoved = currentBatch.firstChild;
@@ -38,11 +41,11 @@ var removeFirstProcess = function() {
     spanWillRemoved = currentBatch.firstChild;
     currentBatch.removeChild(spanWillRemoved);
 }
+
 var validateQuantity = function() {
     var errorMessage;
     var inputProcessQuantity = document.getElementById('process-quantity');
     var quantity             = 0;
-
 
     if ( inputProcessQuantity.value.trim() === '' || inputProcessQuantity.value < 1 ) {
         if ( inputProcessQuantity.getAttribute( 'class' ) === 'error' ) {
@@ -61,6 +64,7 @@ var validateQuantity = function() {
 
     return quantity;
 }
+
 var generateNProcess = function(n) {
     var idProgram;
     var maxTime;
@@ -76,11 +80,15 @@ var generateNProcess = function(n) {
             case ADDITION:
             case SUBSTRACTION:
             case MULTIPLICATION:
+            case POW:
+            case PERCENT:
                 num1 = Math.floor(Math.random() * NUMBER_LIMIT);
+                //Generate a negative number randomly
                 if ( (Math.random() < 0.5) ) {
                     num1 *= -1;
                 }
                 num2 = Math.floor(Math.random() * NUMBER_LIMIT);
+                //Generate a negative number randomly
                 if ( (Math.random() < 0.5) ) {
                     num2 *= -1;
                 }
@@ -88,24 +96,14 @@ var generateNProcess = function(n) {
             case DIVISION:
             case MODULE:
                 num1 = Math.floor(Math.random() * NUMBER_LIMIT);
+                //Generate a negative number randomly
                 if ( (Math.random() < 0.5) ) {
                     num1 *= -1;
                 }
                 //Doesn't exist a division or module by zero, so the absolute value of num2 must be greater than zero
                 num2 = Math.floor((Math.random() * NUMBER_LIMIT) + 1);
+                //Generate a negative number randomly
                 if ( (Math.random() < 0.5) ) {
-                    num2 *= -1;
-                }
-                break;
-            case N_ROOT:
-                //Doesn't exist the zero root for that reason, the absolute value of num1 must be greater than zero
-                num1 = Math.floor((Math.random() * NUMBER_LIMIT) + 1);
-                if ( (Math.random() < 0.5) ) {
-                    num1 *= -1;
-                }
-                num2 = Math.floor(Math.random() * NUMBER_LIMIT);
-                //Doesn't exist (in a real plane) the even root of a negative number, but exist the odd root of a negative number
-                if ( !isEven(num1) && Math.random() < 0.5 ) {
                     num2 *= -1;
                 }
                 break;
@@ -121,6 +119,7 @@ var generateNProcess = function(n) {
         counter++;
     }
 }
+
 var executeIfIsValid = function() {
     var quantity = validateQuantity();
     if ( quantity ) {
@@ -128,26 +127,7 @@ var executeIfIsValid = function() {
         execute();
     }
 }
-var isEven = function( n ) {
-    n = Number( n );
-    return n === 0 || !!( n && !(n%2) );
-}
-var getNRoot = function( n, x ) {
-    var nroot;
-    //Está validado que no se puedan obtener raíces pares de números negativos
-    x = Math.abs(x);
-    if ( n > 0 ) {
-        n     = 1/n;
-        nroot = Math.pow( x, n );
-    } else if ( n == 0 ) {
-        //Ya validé que no puedan ser n=0 y x=0
-        nroot = 1;
-    } else {
-        n     = 1/Math.abs( n );
-        nroot = 1/Math.pow( x, n );
-    }
-    return nroot;
-}
+
 var batchGenerate = function( ini , end ) {
     var i;
     var spanId;
@@ -179,6 +159,7 @@ var batchGenerate = function( ini , end ) {
     }
     return totalTime;
 }
+
 var batchRemove = function( pendingBatches ) {
     var oldBatch = document.getElementById('current-batch');
     if (oldBatch) {
@@ -186,59 +167,69 @@ var batchRemove = function( pendingBatches ) {
         oldBatch.remove();
     }
 }
+
 var getOperation = function( n1 , n2 , op ) {
     var operation;
     switch ( op ) {
         case ADDITION :
             operation = n1 + " + " + n2;
-        break;
+            break;
         case SUBSTRACTION :
             operation = n1 + " - " + n2;
-        break;
+            break;
         case MULTIPLICATION :
             operation = n1 + " * " + n2;
-        break;
+            break;
         case DIVISION :
             operation = n1 + " / " + n2;
-        break;
+            break;
         case MODULE :
             operation = n1 + " módulo " + n2;
-        break;
-        case N_ROOT :
-            operation = "raíz(" + n1 + "," + n2 + ")";
-        break;
+            break;
+        case POW :
+            operation = n1 + "^" + n2;
+            break;
+        case PERCENT :
+            operation = n1 + "% de " + n2;
+            break;
     }
     return operation;
 }
+
 var getResults = function( n1 , n2 , op ) {
     var result;
     switch ( op ) {
         case ADDITION :
             result = parseFloat(n1) + parseFloat(n2);
-        break;
+            break;
         case SUBSTRACTION :
             result = n1 - n2;
-        break;
+            break;
         case MULTIPLICATION :
             result = n1 * n2;
-        break;
+            break;
         case DIVISION :
             result = n1 / n2;
-        break;
+            break;
         case MODULE :
             result = n1 % n2;
-        break;
-        case N_ROOT :
-            result = getNRoot( n1, n2 );
-        break;
+            break;
+        case POW :
+            result = Math.pow( n1, n2 );
+            break;
+        case PERCENT :
+            result = n1 / 100 * n2 ;
+            break;
     }
     return result;
 }
+
 var getOpAndResult = function(index) {
-    var opAndResult = getOperation( programs[index].num1, programs[index].num2, programs[index].op ) + 
+    var opAndResult = getOperation( programs[index].num1, programs[index].num2, programs[index].op ) +
                       ' = ' + getResults( programs[index].num1, programs[index].num2, programs[index].op);
     return opAndResult;
 }
+
 var printResult = function( index ) {
     var resultsSection  = document.getElementById( 'results' );
     var spanId          = document.createElement( 'span' );
@@ -258,6 +249,7 @@ var printResult = function( index ) {
     resultsSection.appendChild( spanOpAndResult );
     resultsSection.appendChild( spanBatchNumber );
 }
+
 var executeProcess = function( limit, totalTime, pastTime, remainingTime, index ) {
     var i         = 0;
     var myProcess = setInterval( function() {
@@ -275,6 +267,7 @@ var executeProcess = function( limit, totalTime, pastTime, remainingTime, index 
         }
     }, 1000 );
 }
+
 var executeBatch = function( index, end, inputs ) {
     var timeSleep      = 0;
     var totalTimeSleep = 0;
@@ -303,6 +296,7 @@ var executeBatch = function( index, end, inputs ) {
         index++;
     }
 }
+
 var getSleepTimeByBatch = function( ini , end ) {
     var i;
     var totalTime = 0;
@@ -311,6 +305,7 @@ var getSleepTimeByBatch = function( ini , end ) {
     }
     return totalTime;
 }
+
 var changeToExcecutionView = function() {
     var initForm  = document.getElementById('init-form');
     var execution = document.getElementById('execution');
@@ -318,6 +313,7 @@ var changeToExcecutionView = function() {
     initForm.setAttribute('class', 'hidden');
     execution.removeAttribute('class');
 }
+
 var execute = function() {
     var i,timer,secondaryLimit;
     var numBatches  = Math.ceil(counter/PROGS_BY_BATCH);
