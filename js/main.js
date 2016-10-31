@@ -1,22 +1,29 @@
-var programs         = [];
-var counter          = 0;
+var appState = {};
+var INPUTS;
+var CONTAINERS;
 
-//constant for programs by batch
-const PROGS_BY_BATCH = 5;
-//constants for operations
-const ADDITION       = 1;
-const SUBSTRACTION   = 2;
-const MULTIPLICATION = 3;
-const DIVISION       = 4;
-const MODULE         = 5;
-const POW            = 6;
-const PERCENT        = 7;
-//constants for limits to use when generate random numbers
-const MAX_TIME_LIMIT = 10;
-const NUMBER_LIMIT   = 100;
-const OPER_LIMIT     = 7;
+document.onreadystatechange = function () {
+    if (document.readyState === 'complete') {
+        INPUTS = {
+            pendingBatches: document.getElementById('pending-batches'),
+            process: {
+                operation: document.getElementById('op-process'),
+                maxTime: document.getElementById('time-process'),
+                id: document.getElementById('id-process'),
+                elapsedTime: document.getElementById('past-time-process'),
+                remainingTime: document.getElementById('remaining-time-process')
+            },
+            totalElapsedTime: document.getElementById('total-time')
+        };
 
-var appendError = function( node , errorMessage ) {
+        CONTAINERS = {
+            batch: document.getElementById('batches'),
+            results: document.getElementById('results')
+        };
+    }
+};
+
+const appendError = ( node , errorMessage ) => {
     var parent    = node.parentNode;
     var errorSpan = document.createElement( 'span' );
     var message   = document.createTextNode( errorMessage );
@@ -24,28 +31,17 @@ var appendError = function( node , errorMessage ) {
     parent.appendChild( errorSpan );
 }
 
-var removeError = function( node ) {
+const removeError = ( node ) => {
     node.removeAttribute( 'class' );
     var parent       = node.parentNode;
     var errorSpan    = node.nextElementSibling;
     parent.removeChild( errorSpan );
 }
 
-var removeFirstProcess = function() {
-    var currentBatch    = document.getElementById('current-batch');
-    var spanWillRemoved = currentBatch.firstChild;
-
-    currentBatch.removeChild(spanWillRemoved);
-    spanWillRemoved = currentBatch.firstChild;
-    currentBatch.removeChild(spanWillRemoved);
-    spanWillRemoved = currentBatch.firstChild;
-    currentBatch.removeChild(spanWillRemoved);
-}
-
-var validateQuantity = function() {
+const validateQuantity = () => {
     var errorMessage;
     var inputProcessQuantity = document.getElementById('process-quantity');
-    var quantity             = 0;
+    var quantity             = 0; //A falsy value
 
     if ( inputProcessQuantity.value.trim() === '' || inputProcessQuantity.value < 1 ) {
         if ( inputProcessQuantity.getAttribute( 'class' ) === 'error' ) {
@@ -65,17 +61,31 @@ var validateQuantity = function() {
     return quantity;
 }
 
-var generateNProcess = function(n) {
+const setInitialStatus = (programsQty) => {
     var idProgram;
     var maxTime;
+    var remainingTime;
+    var elapsedTime;
     var num1;
     var op;
     var num2;
+    //El primer lote debe ser el 0 y comienza incrementándose en 1 el valor del contador dentro del for
+    var batchNumber = -1;
 
-    for(var i = 0; i < n; i++) {
-        idProgram = counter + 1;
-        maxTime = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
-        op = Math.floor((Math.random() * OPER_LIMIT) + 1);
+    appState.pendingBatches   = Math.ceil(programsQty / PROGS_BY_BATCH) -1; //El primer lote ya nunca se toma como "lote pendiente"
+    appState.batches          = [];
+    appState.finishedPrograms = [];
+    appState.totalElapsedTime = 0;
+    appState.action           = 'continue';
+
+    for (let i = 0; i < programsQty; i++) {
+        if (i % PROGS_BY_BATCH === 0) {
+            batchNumber ++;
+            appState.batches[batchNumber] = [];
+        }
+        idProgram = i + 1;
+        maxTime   = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
+        op        = Math.floor((Math.random() * OPER_LIMIT) + 1);
         switch(op) {
             case ADDITION:
             case SUBSTRACTION:
@@ -108,67 +118,54 @@ var generateNProcess = function(n) {
                 }
                 break;
         }
-        programs[counter] = {
+        appState.batches[batchNumber][i % PROGS_BY_BATCH] = {
             idProgram: idProgram,
             maxTime: maxTime,
             num1: num1,
             op: op,
             num2: num2,
-            remainingTime: maxTime
+            remainingTime: maxTime,
+            elapsedTime: 0,
+            batchNumber : batchNumber + 1
         };
-        counter++;
     }
 }
 
-var executeIfIsValid = function() {
+const setListeners = () => {
+    document.onkeypress = (e) => {
+        if (appState.action === 'continue' && (e.key === 'e' || e.key === 'E')) {
+            appState.action = 'e/s-interruption';
+        } else if (appState.action !== 'continue' && (e.key === 'w' || e.key === 'W')) {
+            appState.action = 'error';
+        } else if (e.key === 'p' || e.key === 'P') {
+            appState.action = 'pause';
+        } else if (appState.action === 'pause' && (e.key === 'c' || e.key === 'C')) {
+            appState.action = 'continue';
+            runApp();
+        }
+    };
+}
+
+const executeIfIsValid = () => {
     var quantity = validateQuantity();
-    if ( quantity ) {
-        generateNProcess( quantity );
-        execute();
+    if ( quantity ) { //If quantity is greater than 0
+        setInitialStatus( quantity );
+        changeToExcecutionView();
+        render();
+        setListeners();
+        runApp();
     }
 }
 
-var batchGenerate = function( ini , end ) {
-    var i;
-    var spanId;
-    var spanMte;
-    var spanRemain;
-    var content;
-    var totalTime      = 0;
-    var batchesSection = document.getElementById( 'batches' );
-    var batchesDiv     = document.createElement( "div" );
-    batchesDiv.setAttribute( 'id' , 'current-batch' );
-    batchesSection.appendChild( batchesDiv );
-    for ( i = ini; i < end; i ++ ) {
-        spanId     = document.createElement( "span" );
-        spanMte    = document.createElement( "span" );
-        spanRemain = document.createElement( "span" );
-        content    = document.createTextNode( programs[i].idProgram );
-        spanId.appendChild( content );
-        spanId.setAttribute( 'class' , 'left' );
-        content    = document.createTextNode( programs[i].maxTime );
-        totalTime += parseInt( programs[i].maxTime ) + 1;
-        spanMte.appendChild( content );
-        spanMte.setAttribute( 'class' , 'left' );
-        content = document.createTextNode( programs[i].remainingTime );
-        spanRemain.appendChild( content );
-        spanRemain.setAttribute( 'class' , 'left remaining-time' );
-        batchesDiv.appendChild( spanId );
-        batchesDiv.appendChild( spanMte );
-        batchesDiv.appendChild( spanRemain );
-    }
-    return totalTime;
+const changeToExcecutionView = () => {
+    var initForm  = document.getElementById('init-form');
+    var execution = document.getElementById('execution');
+
+    initForm.setAttribute('class', 'hidden');
+    execution.removeAttribute('class');
 }
 
-var batchRemove = function( pendingBatches ) {
-    var oldBatch = document.getElementById('current-batch');
-    if (oldBatch) {
-        pendingBatches.value = pendingBatches.value - 1;
-        oldBatch.remove();
-    }
-}
-
-var getOperation = function( n1 , n2 , op ) {
+const getOperation = ( n1 , n2 , op ) => {
     var operation;
     switch ( op ) {
         case ADDITION :
@@ -196,7 +193,7 @@ var getOperation = function( n1 , n2 , op ) {
     return operation;
 }
 
-var getResults = function( n1 , n2 , op ) {
+const getResults = ( n1 , n2 , op ) => {
     var result;
     switch ( op ) {
         case ADDITION :
@@ -224,150 +221,178 @@ var getResults = function( n1 , n2 , op ) {
     return result;
 }
 
-var getOpAndResult = function(index) {
-    var opAndResult = getOperation( programs[index].num1, programs[index].num2, programs[index].op ) +
-                      ' = ' + getResults( programs[index].num1, programs[index].num2, programs[index].op);
+const getOpAndResult = (program) => {
+    var operation   = getOperation( program.num1, program.num2, program.op );
+    //If program.remainingTime = 0, then asign the result, else, asign 'ERROR'
+    var result      = program.remainingTime === 0
+                        ? getResults( program.num1, program.num2, program.op)
+                        : 'ERROR';
+    var opAndResult = operation + ' = ' + result;
     return opAndResult;
 }
 
-var printResult = function( index ) {
-    var resultsSection  = document.getElementById( 'results' );
-    var spanId          = document.createElement( 'span' );
-    var spanOpAndResult = document.createElement( 'span' );
-    var spanBatchNumber = document.createElement( 'span' );
-    var textId          = document.createTextNode( programs[index].idProgram );
-    var textOpAndResult = document.createTextNode( getOpAndResult(index) );
-    var textBatchNumber = document.createTextNode( Math.ceil((index + 1)/PROGS_BY_BATCH) );
-
-    spanId.setAttribute( 'class', 'col-md-3' );
-    spanOpAndResult.setAttribute( 'class', 'col-md-6' );
-    spanBatchNumber.setAttribute( 'class', 'col-md-3 center-text' );
-    spanId.appendChild( textId );
-    spanOpAndResult.appendChild( textOpAndResult );
-    spanBatchNumber.appendChild( textBatchNumber );
-    resultsSection.appendChild( spanId );
-    resultsSection.appendChild( spanOpAndResult );
-    resultsSection.appendChild( spanBatchNumber );
-}
-
-var executeProcess = function( limit, totalTime, pastTime, remainingTime, index ) {
-    var i         = 0;
-    var myProcess = setInterval( function() {
-        if ( i < limit )  {
-            i ++;
-            totalTime.value ++;
-            pastTime.value ++;
-            remainingTime.value --;
-        } else {
-            printResult( index );
-            if ( (index + 1) % PROGS_BY_BATCH !== 0 || index + 1 === programs.length ) {
-                removeFirstProcess();
-            }
-            clearInterval( myProcess );
-        }
-    }, 1000 );
-}
-
-var executeBatch = function( index, end, inputs ) {
-    var timeSleep      = 0;
-    var totalTimeSleep = 0;
-    var ini            = index;
-    while ( index < end ) {
-        (function( ind ) {
-            if ( ind > ini ) {
-                timeSleep       = programs[ind-1].maxTime;
-                totalTimeSleep += parseInt( timeSleep ) + 1;
-            }
-            setTimeout( function() {
-                inputs.inputOp.value            = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
-                inputs.inputMaxTime.value       = programs[ind].maxTime;
-                inputs.inputId.value            = programs[ind].idProgram;
-                inputs.inputPastTime.value      = 0;
-                inputs.inputRemainingTime.value = programs[ind].remainingTime;
-                executeProcess(
-                    programs[ind].maxTime,
-                    inputs.inputTotalTime,
-                    inputs.inputPastTime,
-                    inputs.inputRemainingTime,
-                    ind
-                );
-            }, (totalTimeSleep) * 1000 );
-        })(index);
-        index++;
+const batchRemove = () => {
+    var oldBatch = document.getElementById('current-batch');
+    if (oldBatch) {
+        oldBatch.remove();
     }
 }
 
-var getSleepTimeByBatch = function( ini , end ) {
-    var i;
-    var totalTime = 0;
-    for ( i = ini; i < end; i ++ ) {
-        totalTime += parseInt( programs[i].maxTime ) + 1;
+const renderBatch = (batch) => {
+    var spanId;
+    var spanMte;
+    var spanRemain;
+    var content;
+    var batchesDiv = document.createElement( "div" );
+
+    batchRemove(); //Remove the old batch
+
+    if (batch !== undefined) {
+        batchesDiv.setAttribute( 'id' , 'current-batch' );
+        CONTAINERS.batch.appendChild( batchesDiv );
+
+        batch.forEach(function (program) {
+            spanId     = document.createElement( "span" );
+            spanMte    = document.createElement( "span" );
+            spanRemain = document.createElement( "span" );
+            content    = document.createTextNode( program.idProgram );
+            spanId.appendChild( content );
+            spanId.setAttribute( 'class' , 'left' );
+            content    = document.createTextNode( program.maxTime );
+            spanMte.appendChild( content );
+            spanMte.setAttribute( 'class' , 'left' );
+            content = document.createTextNode( program.remainingTime );
+            spanRemain.appendChild( content );
+            spanRemain.setAttribute( 'class' , 'left remaining-time' );
+            batchesDiv.appendChild( spanId );
+            batchesDiv.appendChild( spanMte );
+            batchesDiv.appendChild( spanRemain );
+        });
     }
-    return totalTime;
 }
 
-var changeToExcecutionView = function() {
-    var initForm  = document.getElementById('init-form');
-    var execution = document.getElementById('execution');
-
-    initForm.setAttribute('class', 'hidden');
-    execution.removeAttribute('class');
+const renderCurrentProcess = (process) => {
+    if (process !== undefined) {
+        INPUTS.process.operation.value     = getOperation(process.num1, process.num2, process.op);
+        INPUTS.process.maxTime.value       = process.maxTime;
+        INPUTS.process.id.value            = process.idProgram;
+        INPUTS.process.elapsedTime.value   = process.elapsedTime;
+        INPUTS.process.remainingTime.value = process.remainingTime;
+    } else {
+        INPUTS.process.operation.value     = '';
+        INPUTS.process.maxTime.value       = '';
+        INPUTS.process.id.value            = '';
+        INPUTS.process.elapsedTime.value   = '';
+        INPUTS.process.remainingTime.value = '';
+    }
 }
 
-var execute = function() {
-    var i,timer,secondaryLimit;
-    var numBatches  = Math.ceil(counter/PROGS_BY_BATCH);
-    var remaining   = counter % PROGS_BY_BATCH;
-    var exact       = remaining ? false : true;
-    var finishRound = false;
-    var totalTime   = 0;
-    var sleepTimes  = [];
-    var sleepTime   = 0;
-    var finishRound = false;
-    var inputs      = {
-        inputOp: document.getElementById('op-process'),
-        inputMaxTime: document.getElementById('time-process'),
-        inputId: document.getElementById('id-process'),
-        inputPastTime: document.getElementById('past-time-process'),
-        inputRemainingTime: document.getElementById('remaining-time-process'),
-        inputTotalTime: document.getElementById('total-time'),
-        inputPendingBatches: document.getElementById('pending-batches')
-    };
-    changeToExcecutionView();
-    //Inicialización del input de "lotes pendientes" (si es que hay lotes)
-    if ( numBatches > 0 ) {
-        inputs.inputPendingBatches.value = numBatches - 1;
+const resultsRemove = () => {
+    var oldResults = document.getElementById('current-results');
+    if (oldResults) {
+        oldResults.remove();
     }
-    //Cálculo de los tiempos que debe detenerse el for principal para cada iteración.
-    for( i = 0; i < numBatches; i ++ ) {
-        sleepTimes[i]  = sleepTime;
-        secondaryLimit = i * PROGS_BY_BATCH + PROGS_BY_BATCH;
-        if ( i === numBatches - 1 ) {
-            finishRound = true;
-            if( !exact ) {
-                secondaryLimit = i * PROGS_BY_BATCH + remaining;
-            }
-        }
-        sleepTime += getSleepTimeByBatch( i * PROGS_BY_BATCH, secondaryLimit );
+}
+
+const renderResults = (results) => {
+    var spanId;
+    var spanOpAndResult;
+    var spanBatchNumber;
+    var content;
+    var resultsDiv = document.createElement( "div" );
+
+    resultsRemove(); //Remove the old batch
+
+    resultsDiv.setAttribute( 'id' , 'current-results' );
+    CONTAINERS.results.appendChild( resultsDiv );
+
+    results.forEach(function (program) {
+        spanId          = document.createElement( "span" );
+        spanOpAndResult = document.createElement( "span" );
+        spanBatchNumber = document.createElement( "span" );
+
+        spanId.setAttribute( 'class', 'col-md-3' );
+        spanOpAndResult.setAttribute( 'class', 'col-md-6' );
+        spanBatchNumber.setAttribute( 'class', 'col-md-3 center-text' );
+
+        content = document.createTextNode( program.idProgram );
+        spanId.appendChild( content );
+        content = document.createTextNode( getOpAndResult(program) );
+        spanOpAndResult.appendChild( content );
+        content = document.createTextNode( program.batchNumber );
+        spanBatchNumber.appendChild( content );
+        resultsDiv.appendChild( spanId );
+        resultsDiv.appendChild( spanOpAndResult );
+        resultsDiv.appendChild( spanBatchNumber );
+    });
+}
+
+const render = () => {
+    INPUTS.pendingBatches.value = appState.pendingBatches;
+    renderBatch(appState.batches[0]);
+    if (appState.batches.length > 0) {
+        renderCurrentProcess(appState.batches[0][0]);
+    } else {
+        renderCurrentProcess();
     }
-    //Inicio del for principal
-    for( i = 0; i < numBatches; i ++ ) {
-        (function( index , nBatches ) {
-            setTimeout(function() {
-                secondaryLimit = index * PROGS_BY_BATCH + PROGS_BY_BATCH;
-                if( index === nBatches - 1 ) {
-                    finishRound = true;
-                    if( !exact ) {
-                        secondaryLimit = index * PROGS_BY_BATCH + remaining;
+    renderResults(appState.finishedPrograms);
+    INPUTS.totalElapsedTime.value = appState.totalElapsedTime;
+}
+
+const continueAction = () => {
+    if (appState.batches.length > 0) {
+        setTimeout(function () {
+            if (appState.batches[0][0].remainingTime > 0) {
+                appState.batches[0][0].remainingTime--;
+                appState.totalElapsedTime++;
+            } else {
+                appState.finishedPrograms.push(appState.batches[0].shift());
+                if (appState.batches[0].length === 0) {
+                    appState.batches.shift();
+                    if (appState.pendingBatches > 0) {
+                        appState.pendingBatches--;
                     }
                 }
-                batchRemove( inputs.inputPendingBatches );
-                totalTime += batchGenerate( index * PROGS_BY_BATCH , secondaryLimit );
-                sleepTime += totalTime;
+            }
+            render();
+            runApp();
+        }, 1000);
+    }
+}
 
-                executeBatch( index * PROGS_BY_BATCH , secondaryLimit, inputs );
+const interruptionAction = () => {
+    if (appState.batches.length > 0) {
+        appState.batches[0].push(appState.batches[0].shift());
+        appState.action = 'continue';
+        runApp();
+    }
+}
 
-            }, sleepTimes[index] * 1000);
-        })( i , numBatches);
+const errorAction = () => {
+    if (appState.batches.length > 0) {
+        appState.finishedPrograms.push(appState.batches[0].shift());
+        if (appState.batches[0].length === 0) {
+            appState.batches.shift();
+            if (appState.batches.length === 0) {
+                render();
+            } else {
+                appState.pendingBatches--;
+            }
+        }
+        appState.action = 'continue';
+        runApp();
+    }
+}
+
+const runApp = () => {
+    switch (appState.action) {
+        case 'continue':
+            continueAction();
+            break;
+        case 'e/s-interruption':
+            interruptionAction();
+            break;
+        case 'error':
+            errorAction();
     }
 }
