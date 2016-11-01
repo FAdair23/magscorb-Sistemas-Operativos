@@ -32,9 +32,9 @@ const appendError = ( node , errorMessage ) => {
 }
 
 const removeError = ( node ) => {
+    var parent    = node.parentNode;
+    var errorSpan = node.nextElementSibling;
     node.removeAttribute( 'class' );
-    var parent       = node.parentNode;
-    var errorSpan    = node.nextElementSibling;
     parent.removeChild( errorSpan );
 }
 
