@@ -1,8 +1,29 @@
-var programs       = [];
-var counter        = 0;
-const progsByBatch = 5;
+var appState = {};
+var INPUTS;
+var CONTAINERS;
 
-var appendError = function ( node , errorMessage ) {
+document.onreadystatechange = function () {
+    if (document.readyState === 'complete') {
+        INPUTS = {
+            pendingBatches: document.getElementById('pending-batches'),
+            process: {
+                operation: document.getElementById('op-process'),
+                maxTime: document.getElementById('time-process'),
+                id: document.getElementById('id-process'),
+                elapsedTime: document.getElementById('past-time-process'),
+                remainingTime: document.getElementById('remaining-time-process')
+            },
+            totalElapsedTime: document.getElementById('total-time')
+        };
+
+        CONTAINERS = {
+            batch: document.getElementById('batches'),
+            results: document.getElementById('results')
+        };
+    }
+};
+
+const appendError = ( node , errorMessage ) => {
     var parent    = node.parentNode;
     var errorSpan = document.createElement( 'span' );
     var message   = document.createTextNode( errorMessage );
@@ -10,336 +31,133 @@ var appendError = function ( node , errorMessage ) {
     parent.appendChild( errorSpan );
 }
 
-var removeError = function ( node ) {
+const removeError = ( node ) => {
     var parent    = node.parentNode;
     var errorSpan = node.nextElementSibling;
     node.removeAttribute( 'class' );
     parent.removeChild( errorSpan );
 }
 
-var removeFirstProcess = function () {
-    var currentBatch    = document.getElementById('current-batch');
-    var spanWillRemoved = currentBatch.firstChild;
+const validateQuantity = () => {
+    var errorMessage;
+    var inputProcessQuantity = document.getElementById('process-quantity');
+    var quantity             = 0; //A falsy value
 
-    currentBatch.removeChild(spanWillRemoved);
-    spanWillRemoved = currentBatch.firstChild;
-    currentBatch.removeChild(spanWillRemoved);
-}
-
-var restart = function () {
-    var i;
-    var inputs = {
-        inputName: document.getElementById( 'name' ),
-        inputNum1: document.getElementById( 'num1' ),
-        inputOp: document.getElementById( 'op' ),
-        inputNum2: document.getElementById( 'num2' ),
-        inputMaxTime: document.getElementById( 'max-time' ),
-        inputIdProgram: document.getElementById( 'id-program' )
-    };
-    for (var key in inputs) {
-        inputs[key].value = '';
-    }
-    inputs.inputOp.value = 'none';
-}
-
-var guardar = function () {
-    var currentProg = validate();
-    var counterSpan = document.getElementById('counter');
-    if( currentProg && opValidate( currentProg ) ) {
-    	if( idValidation( currentProg.idProgram ) ) {
-    		programs[counter] = currentProg;
-            counter ++;
-            swal("Muy bien " + currentProg.name , "Tu programa ha sido guardado" , "success");
-            counterSpan.innerText = counter;
-            restart();
-    	} else {
-    		var imageUrl = getImageUrl();
-    		swal({
-            	title: 'Id inválido',
-                text: 'El número de programa que intentas ingresar, ya ha sido registrado',
-                imageUrl: imageUrl
-            });
-    	}
-    }
-}
-
-var validate = function () {
-    var currentProg  = null;
-    var errorMessage = '';
-    var errors       = 0;
-    var hasError     = false;
-
-    var inputs = {
-        inputName: document.getElementById('name'),
-        inputNum1: document.getElementById('num1'),
-        inputOp: document.getElementById('op'),
-        inputNum2: document.getElementById('num2'),
-        inputMaxTime: document.getElementById('max-time'),
-        inputIdProgram: document.getElementById('id-program')
-    };
-    for (var key in inputs) {
-        hasError = false; //Reiniciar bandera
-        //Limpiar errores anteriores del campo.
-        if ( inputs[key].getAttribute( 'class' ) === 'error' ) {
-            removeError( inputs[key] );
+    if ( inputProcessQuantity.value.trim() === '' || inputProcessQuantity.value < 1 ) {
+        if ( inputProcessQuantity.getAttribute( 'class' ) === 'error' ) {
+            removeError( inputProcessQuantity );
         }
-        if ( inputs[key].value.trim() === '' ) {
+        if ( inputProcessQuantity.value.trim() === '' ) {
             errorMessage = 'Campo requerido';
-            hasError = true;
-        } else if ( key === 'inputOp' && inputs[key].value === 'none' ) {
-            errorMessage = 'Selecciona operación!';
-            hasError = true;
-        } else if ( key === 'inputId' && inputs[key].value <= '0' ) {
-            errorMessage = 'El Id debe ser mayor a 0';
-            hasError = true;
-        } else if ( key === 'inputMaxTime' && inputs[key].value <= '0' ) {
-            errorMessage = 'El tiempo máximo estimado debe ser mayor a 0';
-            hasError = true;
+        } else {
+            errorMessage = '¿Ejecutar cero o menos procesos? Lo siento, no estoy aquí para éso.';
         }
-
-        if ( hasError ) {
-            inputs[key].setAttribute( 'class' , 'error' );
-            appendError( inputs[key] , errorMessage );
-            errors ++;
-        }
+        inputProcessQuantity.setAttribute( 'class' , 'error' );
+        appendError( inputProcessQuantity , errorMessage );
+    } else {
+        quantity = inputProcessQuantity.value;
     }
 
-    if( errors === 0 ) {
-        currentProg = {
-            name: inputs['inputName'].value,
-            num1: inputs['inputNum1'].value,
-            op: inputs['inputOp'].value,
-            num2: inputs['inputNum2'].value,
-            maxTime: inputs['inputMaxTime'].value,
-            idProgram: inputs['inputIdProgram'].value
+    return quantity;
+}
+
+const setInitialStatus = (programsQty) => {
+    var idProgram;
+    var maxTime;
+    var remainingTime;
+    var elapsedTime;
+    var num1;
+    var op;
+    var num2;
+    //El primer lote debe ser el 0 y comienza incrementándose en 1 el valor del contador dentro del for
+    var batchNumber = -1;
+
+    appState.pendingBatches   = Math.ceil(programsQty / PROGS_BY_BATCH) -1; //El primer lote ya nunca se toma como "lote pendiente"
+    appState.batches          = [];
+    appState.finishedPrograms = [];
+    appState.totalElapsedTime = 0;
+    appState.action           = 'continue';
+
+    for (let i = 0; i < programsQty; i++) {
+        if (i % PROGS_BY_BATCH === 0) {
+            batchNumber ++;
+            appState.batches[batchNumber] = [];
+        }
+        idProgram = i + 1;
+        maxTime   = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
+        op        = Math.floor((Math.random() * OPER_LIMIT) + 1);
+        switch(op) {
+            case ADDITION:
+            case SUBSTRACTION:
+            case MULTIPLICATION:
+            case POW:
+            case PERCENT:
+                num1 = Math.floor(Math.random() * NUMBER_LIMIT);
+                //Generate a negative number randomly
+                if ( (Math.random() < 0.5) ) {
+                    num1 *= -1;
+                }
+                num2 = Math.floor(Math.random() * NUMBER_LIMIT);
+                //Generate a negative number randomly
+                if ( (Math.random() < 0.5) ) {
+                    num2 *= -1;
+                }
+                break;
+            case DIVISION:
+            case MODULE:
+                num1 = Math.floor(Math.random() * NUMBER_LIMIT);
+                //Generate a negative number randomly
+                if ( (Math.random() < 0.5) ) {
+                    num1 *= -1;
+                }
+                //Doesn't exist a division or module by zero, so the absolute value of num2 must be greater than zero
+                num2 = Math.floor((Math.random() * NUMBER_LIMIT) + 1);
+                //Generate a negative number randomly
+                if ( (Math.random() < 0.5) ) {
+                    num2 *= -1;
+                }
+                break;
+        }
+        appState.batches[batchNumber][i % PROGS_BY_BATCH] = {
+            idProgram: idProgram,
+            maxTime: maxTime,
+            num1: num1,
+            op: op,
+            num2: num2,
+            remainingTime: maxTime,
+            elapsedTime: 0,
+            batchNumber : batchNumber + 1
         };
     }
-	return currentProg;
 }
 
-var getImageUrl = function () {
-	var rand     = Math.round((Math.random() * 100)) % 2;
-    var imageUrl = "images/error.png";
-    if ( rand ) {
-        imageUrl = "images/no.png";
-    }
-    return imageUrl;
-}
-
-var opValidate = function ( program ) {
-    var isValid = true;
-    var imageUrl = getImageUrl();
-    switch ( program.op ) {
-        case 'division':
-            if( program.num2 == 0 ) {
-                swal({
-                	title: 'Operación inválida',
-                    text: 'No puedes hacer una división entre cero',
-                    imageUrl: imageUrl
-                });
-                isValid = false;
-            }
-        break;
-        case 'module':
-            if( program.num2 == 0 ) {
-                swal({
-                	title: 'Operación inválida',
-                    text: 'No puedes obtener un módulo entre cero',
-                    imageUrl: imageUrl
-                });
-                isValid = false;
-            }
-        break;
-    }
-    return isValid;
-}
-
-var idValidation = function ( id ) {
-    var isValid = true;
-    for (var i = programs.length - 1; i >= 0; i--) {
-        if ( programs[i].idProgram == id ) {
-            isValid = false;
-            break;
+const setListeners = () => {
+    document.onkeypress = (e) => {
+        if (appState.action === 'continue' && (e.key === 'e' || e.key === 'E')) {
+            appState.action = 'e/s-interruption';
+        } else if (appState.action !== 'continue' && (e.key === 'w' || e.key === 'W')) {
+            appState.action = 'error';
+        } else if (e.key === 'p' || e.key === 'P') {
+            appState.action = 'pause';
+        } else if (appState.action === 'pause' && (e.key === 'c' || e.key === 'C')) {
+            appState.action = 'continue';
+            runApp();
         }
-    }
-    return isValid;
+    };
 }
 
-var batchGenerate = function ( ini , end ) {
-    var i;
-    var spanId;
-    var spanMte;
-    var content;
-    var totalTime      = 0;
-    var batchesSection = document.getElementById( 'batches' );
-    var batchesDiv     = document.createElement( "div" );
-    batchesDiv.setAttribute( 'id' , 'current-batch' );
-    batchesSection.appendChild( batchesDiv );
-    for ( i = ini; i < end; i ++ ) {
-        spanId    = document.createElement( "span" );
-        spanMte   = document.createElement( "span" );
-        content   = document.createTextNode( programs[i].idProgram );
-        spanId.appendChild( content );
-        spanId.setAttribute( 'class' , 'left' );
-        content     = document.createTextNode( programs[i].maxTime );
-        totalTime += parseInt( programs[i].maxTime ) + 1;
-        spanMte.appendChild( content );
-        spanMte.setAttribute( 'class' , 'right' );
-        batchesDiv.appendChild( spanId );
-        batchesDiv.appendChild( spanMte );
-    }
-    return totalTime;
-}
-
-var batchRemove = function ( pendingBatches ) {
-    var oldBatch = document.getElementById('current-batch');
-    if (oldBatch) {
-        pendingBatches.value = pendingBatches.value - 1;
-        oldBatch.remove();
+const executeIfIsValid = () => {
+    var quantity = validateQuantity();
+    if ( quantity ) { //If quantity is greater than 0
+        setInitialStatus( quantity );
+        changeToExcecutionView();
+        render();
+        setListeners();
+        runApp();
     }
 }
 
-var getOperation = function ( n1 , n2 , op ) {
-    var operation;
-    switch ( op ) {
-        case 'sum' :
-            operation = n1 + " + " + n2;
-        break;
-        case 'substraction' :
-            operation = n1 + " - " + n2;
-        break;
-        case 'multiplication' :
-            operation = n1 + " * " + n2;
-        break;
-        case 'division' :
-            operation = n1 + " / " + n2;
-        break;
-        case 'module' :
-            operation = n1 + " módulo " + n2;
-        break;
-        case 'pow' :
-            operation = n1 + "^" + n2;
-        break;
-        case 'percent' :
-            operation = n1 + "% de " + n2;
-        break;
-    }
-    return operation;
-}
-
-var getResults = function ( n1 , n2 , op ) {
-    var result;
-    switch ( op ) {
-        case 'sum' :
-            result = parseFloat(n1) + parseFloat(n2);
-        break;
-        case 'substraction' :
-            result = n1 - n2;
-        break;
-        case 'multiplication' :
-            result = n1 * n2;
-        break;
-        case 'division' :
-            result = n1 / n2;
-        break;
-        case 'module' :
-            result = n1 % n2;
-        break;
-        case 'pow' :
-            result = Math.pow( n1, n2 );
-        break;
-        case 'percent' :
-            result = n1 / 100 * n2;
-        break;
-    }
-    return result;
-}
-
-var getOpAndResult = function (index) {
-    var opAndResult = getOperation( programs[index].num1, programs[index].num2, programs[index].op )
-                    + ' = ' + getResults( programs[index].num1, programs[index].num2, programs[index].op);
-    return opAndResult;
-}
-
-var printResult = function ( index ) {
-    var resultsSection  = document.getElementById( 'results' );
-    var spanId          = document.createElement( 'span' );
-    var spanOpAndResult = document.createElement( 'span' );
-    var spanBatchNumber = document.createElement( 'span' );
-    var textId          = document.createTextNode( programs[index].idProgram );
-    var textOpAndResult = document.createTextNode( getOpAndResult(index) );
-    var textBatchNumber = document.createTextNode( Math.ceil((index + 1)/progsByBatch) );
-
-    spanId.setAttribute( 'class', 'col-md-3' );
-    spanOpAndResult.setAttribute( 'class', 'col-md-6' );
-    spanBatchNumber.setAttribute( 'class', 'col-md-3 center-text' );
-    spanId.appendChild( textId );
-    spanOpAndResult.appendChild( textOpAndResult );
-    spanBatchNumber.appendChild( textBatchNumber );
-    resultsSection.appendChild( spanId );
-    resultsSection.appendChild( spanOpAndResult );
-    resultsSection.appendChild( spanBatchNumber );
-}
-
-var executeProcess = function ( limit, totalTime, pastTime, remainingTime, index ) {
-    var i         = 0;
-    var myProcess = setInterval( function () {
-        if ( i < limit )  {
-            i ++;
-            totalTime.value ++;
-            pastTime.value ++;
-            remainingTime.value --;
-        } else {
-            printResult( index );
-            if ( (index + 1) % progsByBatch !== 0 || index + 1 === programs.length ) {
-                removeFirstProcess();
-            }
-            clearInterval( myProcess );
-        }
-    }, 1000 );
-}
-
-var executeBatch = function ( index, end, inputs ) {
-    var timeSleep      = 0;
-    var totalTimeSleep = 0;
-    var ini            = index;
-
-    while ( index < end ) {
-        (function ( ind ) {
-            if ( ind > ini ) {
-                timeSleep       = programs[ind-1].maxTime;
-                totalTimeSleep += parseInt( timeSleep ) + 1;
-            }
-            setTimeout( function () {
-                inputs.inputName.value          = programs[ind].name;
-                inputs.inputOp.value            = getOperation( programs[ind].num1 , programs[ind].num2 , programs[ind].op );
-                inputs.inputMaxTime.value       = programs[ind].maxTime;
-                inputs.inputId.value            = programs[ind].idProgram;
-                inputs.inputPastTime.value      = 0;
-                inputs.inputRemainingTime.value = programs[ind].maxTime;
-                executeProcess(
-                    programs[ind].maxTime,
-                    inputs.inputTotalTime,
-                    inputs.inputPastTime,
-                    inputs.inputRemainingTime,
-                    ind
-                );
-            }, (totalTimeSleep) * 1000 );
-        })(index);
-        index++;
-    }
-}
-
-var getSleepTimeByBatch = function ( ini , end ) {
-    var i;
-    var totalTime = 0;
-    for ( i = ini; i < end; i ++ ) {
-        totalTime += parseInt( programs[i].maxTime ) + 1;
-    }
-    return totalTime;
-}
-
-var changeToExcecutionView = function () {
+const changeToExcecutionView = () => {
     var initForm  = document.getElementById('init-form');
     var execution = document.getElementById('execution');
 
@@ -347,65 +165,234 @@ var changeToExcecutionView = function () {
     execution.removeAttribute('class');
 }
 
-var execute = function () {
-    var i,timer,secondaryLimit;
-    var numBatches  = Math.ceil(counter/progsByBatch);
-    var remaining   = counter % progsByBatch;
-    var exact       = remaining ? false : true;
-    var finishRound = false;
-    var totalTime   = 0;
-    var sleepTimes  = [];
-    var sleepTime   = 0;
-    var finishRound = false;
-    var inputs      = {
-        inputName: document.getElementById('name-process'),
-        inputOp: document.getElementById('op-process'),
-        inputMaxTime: document.getElementById('time-process'),
-        inputId: document.getElementById('id-process'),
-        inputPastTime: document.getElementById('past-time-process'),
-        inputRemainingTime: document.getElementById('remaining-time-process'),
-        inputTotalTime: document.getElementById('total-time'),
-        inputPendingBatches: document.getElementById('pending-batches')
-    };
-    changeToExcecutionView();
-    //Inicialización del input de "lotes pendientes" (si es que hay lotes)
-    if ( progsByBatch > 0 ) {
-        inputs.inputPendingBatches.value = numBatches - 1;
+const getOperation = ( n1 , n2 , op ) => {
+    var operation;
+    switch ( op ) {
+        case ADDITION :
+            operation = n1 + " + " + n2;
+            break;
+        case SUBSTRACTION :
+            operation = n1 + " - " + n2;
+            break;
+        case MULTIPLICATION :
+            operation = n1 + " * " + n2;
+            break;
+        case DIVISION :
+            operation = n1 + " / " + n2;
+            break;
+        case MODULE :
+            operation = n1 + " módulo " + n2;
+            break;
+        case POW :
+            operation = n1 + "^" + n2;
+            break;
+        case PERCENT :
+            operation = n1 + "% de " + n2;
+            break;
     }
-    //Cálculo de los tiempos que debe detenerse el for principal para cada iteración.
-    for ( i = 0; i < numBatches; i ++ ) {
-        sleepTimes[i]  = sleepTime;
-        secondaryLimit = i * progsByBatch + progsByBatch;
-        if ( i === numBatches - 1 ) {
-            finishRound = true;
-            if( exact ) {
-                secondaryLimit = i * progsByBatch + progsByBatch;
-            }
-            else {
-                secondaryLimit = i * progsByBatch + remaining;
-            }
-        }
-        sleepTime += getSleepTimeByBatch( i * progsByBatch, secondaryLimit );
+    return operation;
+}
+
+const getResults = ( n1 , n2 , op ) => {
+    var result;
+    switch ( op ) {
+        case ADDITION :
+            result = parseFloat(n1) + parseFloat(n2);
+            break;
+        case SUBSTRACTION :
+            result = n1 - n2;
+            break;
+        case MULTIPLICATION :
+            result = n1 * n2;
+            break;
+        case DIVISION :
+            result = n1 / n2;
+            break;
+        case MODULE :
+            result = n1 % n2;
+            break;
+        case POW :
+            result = Math.pow( n1, n2 );
+            break;
+        case PERCENT :
+            result = n1 / 100 * n2 ;
+            break;
     }
-    //Inicio del for principal
-    for ( i = 0; i < numBatches; i ++ ) {
-        (function ( index , nBatches ) {
-            setTimeout(function () {
-                secondaryLimit = index * progsByBatch + progsByBatch;
-                if ( index === nBatches - 1 ) {
-                    finishRound = true;
-                    if ( exact ) {
-                        secondaryLimit = index * progsByBatch + progsByBatch;
-                    } else {
-                        secondaryLimit = index * progsByBatch + remaining;
+    return result;
+}
+
+const getOpAndResult = (program) => {
+    var operation   = getOperation( program.num1, program.num2, program.op );
+    //If program.remainingTime = 0, then asign the result, else, asign 'ERROR'
+    var result      = program.remainingTime === 0
+                        ? getResults( program.num1, program.num2, program.op)
+                        : 'ERROR';
+    var opAndResult = operation + ' = ' + result;
+    return opAndResult;
+}
+
+const batchRemove = () => {
+    var oldBatch = document.getElementById('current-batch');
+    if (oldBatch) {
+        oldBatch.remove();
+    }
+}
+
+const renderBatch = (batch) => {
+    var spanId;
+    var spanMte;
+    var spanRemain;
+    var content;
+    var batchesDiv = document.createElement( "div" );
+
+    batchRemove(); //Remove the old batch
+
+    if (batch !== undefined) {
+        batchesDiv.setAttribute( 'id' , 'current-batch' );
+        CONTAINERS.batch.appendChild( batchesDiv );
+
+        batch.forEach(function (program) {
+            spanId     = document.createElement( "span" );
+            spanMte    = document.createElement( "span" );
+            spanRemain = document.createElement( "span" );
+            content    = document.createTextNode( program.idProgram );
+            spanId.appendChild( content );
+            spanId.setAttribute( 'class' , 'left' );
+            content    = document.createTextNode( program.maxTime );
+            spanMte.appendChild( content );
+            spanMte.setAttribute( 'class' , 'left' );
+            content = document.createTextNode( program.remainingTime );
+            spanRemain.appendChild( content );
+            spanRemain.setAttribute( 'class' , 'left remaining-time' );
+            batchesDiv.appendChild( spanId );
+            batchesDiv.appendChild( spanMte );
+            batchesDiv.appendChild( spanRemain );
+        });
+    }
+}
+
+const renderCurrentProcess = (process) => {
+    if (process !== undefined) {
+        INPUTS.process.operation.value     = getOperation(process.num1, process.num2, process.op);
+        INPUTS.process.maxTime.value       = process.maxTime;
+        INPUTS.process.id.value            = process.idProgram;
+        INPUTS.process.elapsedTime.value   = process.elapsedTime;
+        INPUTS.process.remainingTime.value = process.remainingTime;
+    } else {
+        INPUTS.process.operation.value     = '';
+        INPUTS.process.maxTime.value       = '';
+        INPUTS.process.id.value            = '';
+        INPUTS.process.elapsedTime.value   = '';
+        INPUTS.process.remainingTime.value = '';
+    }
+}
+
+const resultsRemove = () => {
+    var oldResults = document.getElementById('current-results');
+    if (oldResults) {
+        oldResults.remove();
+    }
+}
+
+const renderResults = (results) => {
+    var spanId;
+    var spanOpAndResult;
+    var spanBatchNumber;
+    var content;
+    var resultsDiv = document.createElement( "div" );
+
+    resultsRemove(); //Remove the old batch
+
+    resultsDiv.setAttribute( 'id' , 'current-results' );
+    CONTAINERS.results.appendChild( resultsDiv );
+
+    results.forEach(function (program) {
+        spanId          = document.createElement( "span" );
+        spanOpAndResult = document.createElement( "span" );
+        spanBatchNumber = document.createElement( "span" );
+
+        spanId.setAttribute( 'class', 'col-md-3' );
+        spanOpAndResult.setAttribute( 'class', 'col-md-6' );
+        spanBatchNumber.setAttribute( 'class', 'col-md-3 center-text' );
+
+        content = document.createTextNode( program.idProgram );
+        spanId.appendChild( content );
+        content = document.createTextNode( getOpAndResult(program) );
+        spanOpAndResult.appendChild( content );
+        content = document.createTextNode( program.batchNumber );
+        spanBatchNumber.appendChild( content );
+        resultsDiv.appendChild( spanId );
+        resultsDiv.appendChild( spanOpAndResult );
+        resultsDiv.appendChild( spanBatchNumber );
+    });
+}
+
+const render = () => {
+    INPUTS.pendingBatches.value = appState.pendingBatches;
+    renderBatch(appState.batches[0]);
+    if (appState.batches.length > 0) {
+        renderCurrentProcess(appState.batches[0][0]);
+    } else {
+        renderCurrentProcess();
+    }
+    renderResults(appState.finishedPrograms);
+    INPUTS.totalElapsedTime.value = appState.totalElapsedTime;
+}
+
+const continueAction = () => {
+    if (appState.batches.length > 0) {
+        setTimeout(function () {
+            if (appState.batches[0][0].remainingTime > 0) {
+                appState.batches[0][0].remainingTime--;
+                appState.totalElapsedTime++;
+            } else {
+                appState.finishedPrograms.push(appState.batches[0].shift());
+                if (appState.batches[0].length === 0) {
+                    appState.batches.shift();
+                    if (appState.pendingBatches > 0) {
+                        appState.pendingBatches--;
                     }
                 }
-                batchRemove( inputs.inputPendingBatches );
-                totalTime += batchGenerate( index * progsByBatch , secondaryLimit );
-                sleepTime += totalTime;
+            }
+            render();
+            runApp();
+        }, 1000);
+    }
+}
 
-                executeBatch( index * progsByBatch , secondaryLimit, inputs );
-            }, sleepTimes[index] * 1000);
-        })( i , numBatches);
+const interruptionAction = () => {
+    if (appState.batches.length > 0) {
+        appState.batches[0].push(appState.batches[0].shift());
+        appState.action = 'continue';
+        runApp();
+    }
+}
+
+const errorAction = () => {
+    if (appState.batches.length > 0) {
+        appState.finishedPrograms.push(appState.batches[0].shift());
+        if (appState.batches[0].length === 0) {
+            appState.batches.shift();
+            if (appState.batches.length === 0) {
+                render();
+            } else {
+                appState.pendingBatches--;
+            }
+        }
+        appState.action = 'continue';
+        runApp();
+    }
+}
+
+const runApp = () => {
+    switch (appState.action) {
+        case 'continue':
+            continueAction();
+            break;
+        case 'e/s-interruption':
+            interruptionAction();
+            break;
+        case 'error':
+            errorAction();
     }
 }

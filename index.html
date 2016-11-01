@@ -6,46 +6,19 @@
         <link rel="stylesheet" type="text/css" href="css/main.css">
         <link rel="stylesheet" type="text/css" href="vendor/sweetalert-master/dist/sweetalert.css">
         <script src="vendor/sweetalert-master/dist/sweetalert.min.js"></script>
+        <script type="text/javascript" src="js/constants.js"></script>
         <script type="text/javascript" src="js/main.js"></script>
     </head>
     <body>
         <div class="container">
             <form id="init-form" onsubmit="return false;" >
                 <div class="form-container">
-                    <h1>Alta de Programas</h1>
+                    <h1>¿Cuántos Programas quieres ejecutar?</h1>
                     <div>
-                        <input type="text" id="name" name="name" placeholder="Ingresa tu nombre">
+                        <input type="number" id="process-quantity" name="process-quantity" placeholder="Cantidad de procesos">
                     </div>
-                    <div class="operation">
-                        <div class="op">
-                            <input type="number" id="num1" name="num1" placeholder="Número 1">
-                        </div>
-                        <div class="op">
-                            <select id="op">
-                                <option value="none">Operación</option>
-                                <option value="sum">Suma</option>
-                                <option value="substraction">Resta</option>
-                                <option value="multiplication">Multiplicación</option>
-                                <option value="division">División</option>
-                                <option value="module">Módulo</option>
-                                <option value="pow">Potencia</option>
-                                <option value="percent">Porcentaje</option>
-                            </select>
-                        </div>
-                        <div class="op">
-                            <input type="number" id="num2" name="num2" placeholder="Número 2">
-                        </div>
-                    </div>
-                    <div>
-                        <input type="number" id="max-time" name="max-time" min="1" placeholder="Tiempo máximo estimado">
-                    </div>
-                    <div>
-                        <input type="number" id="id-program" name="id-program" min="1" placeholder="Número de Programa">
-                    </div>
-                    <button onClick="guardar()">Guardar</button>
-                    <button type="submit" form="init-form" value="Submit" id="btn-submit" onClick="execute()">Finalizar</button>
+                    <button type="submit" form="init-form" value="Submit" id="btn-submit" onClick="executeIfIsValid()">Ejecutar</button>
                 </div>
-                <span class="counter-container">Programas registrados: <span id="counter">0</span></span>
             </form>
             <!-- Segunda Parte -->
             <div id="execution" class="hidden">
@@ -57,12 +30,11 @@
                     <section id="batches">
                         <h1>Lote en ejecución</h1>
                         <h2 class="left">Id Programa</h2>
-                        <h2 class="right">TME</h2>
+                        <h2 class="left">TME</h2>
+                        <h2 class="left">Restante</h2>
                     </section>
                     <section id="process">
                         <h1>Proceso en ejecución</h1>
-                        <label for="name-process">Programador:</label>
-                        <input type="text" id="name-process" name="name-process" disabled>
                         <label for="op-process">Operación:</label>
                         <input type="text" id="op-process" name="op-process" disabled>
                         <label for="time-process">TME:</label>
