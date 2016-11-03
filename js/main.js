@@ -21,7 +21,9 @@ document.onreadystatechange = function () {
             locked: document.getElementById('locked-process'),
             results: document.getElementById('results'),
             execResults: document.getElementById('execution-results'),
-            execResultsTable: document.getElementById('execution-results-table')
+            execResultsTable: document.getElementById('execution-results-table'),
+            bcp: document.getElementById('bcp'),
+            bcpTable: document.getElementById('bcp-table'),
         };
     }
 };
@@ -64,19 +66,68 @@ const validateQuantity = () => {
     return quantity;
 }
 
+const generateProgram = () => {
+    let program;
+    let idProgram;
+    let maxTime;
+    let num1;
+    let op;
+    let num2;
+
+    appState.lastId++;
+    idProgram = appState.lastId;
+    maxTime   = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
+    op        = Math.floor((Math.random() * OPER_LIMIT) + 1);
+    switch(op) {
+        case ADDITION:
+        case SUBSTRACTION:
+        case MULTIPLICATION:
+        case POW:
+        case PERCENT:
+            num1 = Math.floor(Math.random() * NUMBER_LIMIT);
+            //Generate a negative number randomly
+            if ( (Math.random() < 0.5) ) {
+                num1 *= -1;
+            }
+            num2 = Math.floor(Math.random() * NUMBER_LIMIT);
+            //Generate a negative number randomly
+            if ( (Math.random() < 0.5) ) {
+                num2 *= -1;
+            }
+            break;
+        case DIVISION:
+        case MODULE:
+            num1 = Math.floor(Math.random() * NUMBER_LIMIT);
+            //Generate a negative number randomly
+            if ( (Math.random() < 0.5) ) {
+                num1 *= -1;
+            }
+            //Doesn't exist a division or module by zero, so the absolute value of num2 must be greater than zero
+            num2 = Math.floor((Math.random() * NUMBER_LIMIT) + 1);
+            //Generate a negative number randomly
+            if ( (Math.random() < 0.5) ) {
+                num2 *= -1;
+            }
+            break;
+    }
+    program = {
+        idProgram: idProgram,
+        maxTime: maxTime,
+        num1: num1,
+        op: op,
+        num2: num2,
+        remainingTime: maxTime,
+        elapsedTime: 0,
+        lockedTime: 0,
+        arrivalTime: 0,
+    };
+
+    return program;
+}
+
 const setInitialStatus = (programsQty) => {
-    var idProgram;
-    var maxTime;
-    var num1;
-    var op;
-    var num2;
-    var program;
-    //La cantidad de procesos pendientes será = el total de procesos menos los que caben en memoria,
-    //en caso de que la cantidad de programas sea menor al "tamaño" de la memoria entonces
-    //los procesos pendientes serán 0.
-    appState.pendingProcessQty   = programsQty > MEMORY_SIZE
-                                    ? programsQty - MEMORY_SIZE
-                                    : 0;
+    let program;
+
     appState.programs = {
         executing : null,
         ready: [],
@@ -84,56 +135,12 @@ const setInitialStatus = (programsQty) => {
         new: [],
         finished: []
     }
+    appState.lastId           = 0;
     appState.totalElapsedTime = 0;
     appState.action           = 'continue';
 
     for (let i = 0; i < programsQty; i++) {
-        idProgram = i + 1;
-        maxTime   = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
-        op        = Math.floor((Math.random() * OPER_LIMIT) + 1);
-        switch(op) {
-            case ADDITION:
-            case SUBSTRACTION:
-            case MULTIPLICATION:
-            case POW:
-            case PERCENT:
-                num1 = Math.floor(Math.random() * NUMBER_LIMIT);
-                //Generate a negative number randomly
-                if ( (Math.random() < 0.5) ) {
-                    num1 *= -1;
-                }
-                num2 = Math.floor(Math.random() * NUMBER_LIMIT);
-                //Generate a negative number randomly
-                if ( (Math.random() < 0.5) ) {
-                    num2 *= -1;
-                }
-                break;
-            case DIVISION:
-            case MODULE:
-                num1 = Math.floor(Math.random() * NUMBER_LIMIT);
-                //Generate a negative number randomly
-                if ( (Math.random() < 0.5) ) {
-                    num1 *= -1;
-                }
-                //Doesn't exist a division or module by zero, so the absolute value of num2 must be greater than zero
-                num2 = Math.floor((Math.random() * NUMBER_LIMIT) + 1);
-                //Generate a negative number randomly
-                if ( (Math.random() < 0.5) ) {
-                    num2 *= -1;
-                }
-                break;
-        }
-        program = {
-            idProgram: idProgram,
-            maxTime: maxTime,
-            num1: num1,
-            op: op,
-            num2: num2,
-            remainingTime: maxTime,
-            elapsedTime: 0,
-            lockedTime: 0,
-            arrivalTime: 0,
-        };
+        program = generateProgram();
         if (i === 0) {
             appState.programs.executing = program;
             appState.programs.executing.responseTime = 0;
@@ -147,15 +154,26 @@ const setInitialStatus = (programsQty) => {
 
 const setListeners = () => {
     document.onkeypress = (e) => {
-        if (appState.action === 'continue' && (e.key === 'e' || e.key === 'E')) {
-            appState.action = 'e/s-interruption';
-        } else if (appState.action === 'continue' && (e.key === 'w' || e.key === 'W')) {
-            appState.action = 'error';
-        } else if (e.key === 'p' || e.key === 'P') {
-            appState.action = 'pause';
-        } else if (appState.action === 'pause' && (e.key === 'c' || e.key === 'C')) {
-            appState.action = 'continue';
-            runApp();
+        if (appState.action === 'continue') {
+            if (e.key === 'e' || e.key === 'E') {
+                appState.action = 'e/s-interruption';
+            } else if (e.key === 'w' || e.key === 'W') {
+                appState.action = 'error';
+            } else if (e.key === 'u' || e.key === 'U') {
+                appState.action = 'generateProgram';
+            } else if (e.key === 'b' || e.key === 'B') {
+                appState.action = 'showBCP';
+            } else if (e.key === 'p' || e.key === 'P') {
+                appState.action = 'pause';
+            }
+        } else if (e.key === 'c' || e.key === 'C') {
+            if (appState.action === 'pause' || appState.action === 'showBCP') {
+                if (appState.action === 'showBCP') {
+                    CONTAINERS.bcp.setAttribute('class', 'hidden');
+                }
+                appState.action = 'continue';
+                runApp();
+            }
         }
     };
 }
@@ -300,7 +318,7 @@ const renderLocked = (lockedList) => {
             content         = document.createTextNode( program.idProgram );
             spanId.appendChild( content );
             spanId.setAttribute( 'class' , 'left' );
-            content = document.createTextNode( program.lockedTime );
+            content = document.createTextNode( WAIT_TIME - program.lockedTime );
             spanLockedTime.appendChild( content );
             spanLockedTime.setAttribute( 'class' , 'right' );
             lockedDiv.appendChild( spanId );
@@ -349,6 +367,124 @@ const renderResults = (results) => {
         spanOpAndResult.appendChild( content );
         resultsDiv.appendChild( spanId );
         resultsDiv.appendChild( spanOpAndResult );
+    });
+}
+
+const renderBCP = (program, status) => {
+    var tr;
+    var td;
+    var content;
+
+    tr = document.createElement( "tr" );
+    td = document.createElement( "td" );
+    content = document.createTextNode( program.idProgram );
+    td.appendChild( content );
+    tr.appendChild( td );
+    td = document.createElement( "td" );
+    if (status === 'finalizado') {
+        if (program.remainingTime > 0) {
+            content = document.createTextNode( 'finalizado-err' );
+        } else {
+            content = document.createTextNode( 'finalizado-ok' );
+        }
+    } else {
+        content = document.createTextNode( status );
+    }
+    td.appendChild( content );
+    tr.appendChild( td );
+    if (status === 'nuevo') {
+        for (let i = 0; i < 8; i++) {
+            td = document.createElement( "td" );
+            content = document.createTextNode( "NULL" );
+            td.appendChild( content );
+            tr.appendChild( td );
+        }
+    } else {
+        td = document.createElement( "td" );
+        if (status === 'finalizado') {
+            content = document.createTextNode( getOpAndResult(program) );
+        } else {
+            content = document.createTextNode( getOperation(program.num1, program.num2, program.op) + ' = ?' );
+        }
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        content = document.createTextNode( program.arrivalTime );
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        if (status === 'finalizado') {
+            content = document.createTextNode( program.endTime );
+        } else {
+            content = document.createTextNode( 'NULL' );
+        }
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        if (status === 'finalizado') {
+            content = document.createTextNode( program.endTime - program.arrivalTime );
+        } else {
+            content = document.createTextNode( 'NULL' );
+        }
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        if (status === 'finalizado') {
+            content = document.createTextNode( program.endTime - program.arrivalTime - program.elapsedTime );
+        } else {
+            content = document.createTextNode( appState.totalElapsedTime - program.arrivalTime - program.elapsedTime );
+        }
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        content = document.createTextNode( program.elapsedTime );
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        content = document.createTextNode( program.remainingTime );
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        if (program.responseTime === undefined) {
+            content = document.createTextNode( 'NULL' );
+        } else {
+            content = document.createTextNode( program.responseTime );
+        }
+        td.appendChild( content );
+        tr.appendChild( td );
+    }
+
+    return tr;
+}
+
+const renderProcessesTable = () => {
+    let tBody = document.createElement( "tbody" );
+    let tr;
+
+    containerRemove('bcp-tbody'); //Remove the old processes table
+
+    tBody.setAttribute( 'id' , 'bcp-tbody' );
+    CONTAINERS.bcpTable.appendChild( tBody );
+
+    if (appState.programs.executing !== null) {
+        tr = renderBCP(appState.programs.executing, 'ejecución');
+        tBody.appendChild( tr );
+    }
+    appState.programs.finished.forEach(function (program) {
+        tr = renderBCP(program, 'finalizado');
+        tBody.appendChild( tr );
+    });
+    appState.programs.ready.forEach(function (program) {
+        tr = renderBCP(program, 'listo');
+        tBody.appendChild( tr );
+    });
+    appState.programs.locked.forEach(function (program) {
+        tr = renderBCP(program, 'bloqueado');
+        tBody.appendChild( tr );
+    });
+    appState.programs.new.forEach(function (program) {
+        tr = renderBCP(program, 'nuevo');
+        tBody.appendChild( tr );
     });
 }
 
@@ -417,11 +553,12 @@ const renderExecutionResults = (finishedProcesses) => {
 }
 
 const render = () => {
-    INPUTS.pendingProcessQty.value = appState.pendingProcessQty;
+    INPUTS.pendingProcessQty.value = appState.programs.new.length;
     renderReady(appState.programs.ready);
     renderLocked(appState.programs.locked);
     renderCurrentProcess(appState.programs.executing);
     renderResults(appState.programs.finished);
+    renderProcessesTable();
     INPUTS.totalElapsedTime.value = appState.totalElapsedTime;
 }
 
@@ -447,7 +584,6 @@ const continueAction = () => {
                 if (appState.programs.new.length > 0) {
                     appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
                     appState.programs.ready.push(appState.programs.new.shift());
-                    appState.pendingProcessQty--;
                 }
                 if (appState.programs.ready.length > 0) {
                     if (appState.programs.ready[0].responseTime === undefined) {
@@ -461,6 +597,13 @@ const continueAction = () => {
             render();
             runApp();
         }, 1000);
+    } else if (appState.programs.ready.length > 0) {
+        if (appState.programs.ready[0].responseTime === undefined) {
+            appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
+        }
+        appState.programs.executing = appState.programs.ready.shift();
+        render();
+        runApp();
     } else if (appState.programs.locked.length > 0) {
         setTimeout(function () {
             appState.totalElapsedTime++;
@@ -476,6 +619,7 @@ const continueAction = () => {
         }, 1000);
     } else {
         // render results data
+        appState.action = 'finalize';
         renderExecutionResults(appState.programs.finished);
     }
 }
@@ -510,7 +654,6 @@ const errorAction = () => {
         if (appState.programs.new.length > 0) {
             appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
             appState.programs.ready.push(appState.programs.new.shift());
-            appState.pendingProcessQty--;
         }
         if (appState.programs.ready.length > 0) {
             if (appState.programs.ready[0].responseTime === undefined) {
@@ -529,6 +672,32 @@ const errorAction = () => {
     }
 }
 
+const generateProgramAction = () => {
+    let program    = generateProgram();
+    let usedMemory = 0;
+
+    if (appState.programs.executing !== null) {
+        usedMemory++;
+    }
+    usedMemory += appState.programs.ready.length;
+    usedMemory += appState.programs.locked.length;
+
+    if (usedMemory < MEMORY_SIZE) {
+        program.arrivalTime = appState.totalElapsedTime;
+        appState.programs.ready.push(program);
+    } else {
+        appState.programs.new.push(program);
+    }
+
+    appState.action = 'continue';
+    render();
+    runApp();
+}
+
+const showBCPAction = () => {
+    CONTAINERS.bcp.removeAttribute('class');
+}
+
 const runApp = () => {
     switch (appState.action) {
         case 'continue':
@@ -539,5 +708,11 @@ const runApp = () => {
             break;
         case 'error':
             errorAction();
+            break;
+        case 'generateProgram':
+            generateProgramAction();
+            break;
+        case 'showBCP':
+            showBCPAction();
     }
 }
