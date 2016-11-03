@@ -5,7 +5,7 @@ var CONTAINERS;
 document.onreadystatechange = function () {
     if (document.readyState === 'complete') {
         INPUTS = {
-            pendingBatches: document.getElementById('pending-batches'),
+            pendingProcessQty: document.getElementById('pending-process'),
             process: {
                 operation: document.getElementById('op-process'),
                 maxTime: document.getElementById('time-process'),
@@ -17,8 +17,11 @@ document.onreadystatechange = function () {
         };
 
         CONTAINERS = {
-            batch: document.getElementById('batches'),
-            results: document.getElementById('results')
+            ready: document.getElementById('ready-process'),
+            locked: document.getElementById('locked-process'),
+            results: document.getElementById('results'),
+            execResults: document.getElementById('execution-results'),
+            execResultsTable: document.getElementById('execution-results-table')
         };
     }
 };
@@ -64,25 +67,27 @@ const validateQuantity = () => {
 const setInitialStatus = (programsQty) => {
     var idProgram;
     var maxTime;
-    var remainingTime;
-    var elapsedTime;
     var num1;
     var op;
     var num2;
-    //El primer lote debe ser el 0 y comienza incrementándose en 1 el valor del contador dentro del for
-    var batchNumber = -1;
-
-    appState.pendingBatches   = Math.ceil(programsQty / PROGS_BY_BATCH) -1; //El primer lote ya nunca se toma como "lote pendiente"
-    appState.batches          = [];
-    appState.finishedPrograms = [];
+    var program;
+    //La cantidad de procesos pendientes será = el total de procesos menos los que caben en memoria,
+    //en caso de que la cantidad de programas sea menor al "tamaño" de la memoria entonces
+    //los procesos pendientes serán 0.
+    appState.pendingProcessQty   = programsQty > MEMORY_SIZE
+                                    ? programsQty - MEMORY_SIZE
+                                    : 0;
+    appState.programs = {
+        executing : null,
+        ready: [],
+        locked: [],
+        new: [],
+        finished: []
+    }
     appState.totalElapsedTime = 0;
     appState.action           = 'continue';
 
     for (let i = 0; i < programsQty; i++) {
-        if (i % PROGS_BY_BATCH === 0) {
-            batchNumber ++;
-            appState.batches[batchNumber] = [];
-        }
         idProgram = i + 1;
         maxTime   = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
         op        = Math.floor((Math.random() * OPER_LIMIT) + 1);
@@ -118,7 +123,7 @@ const setInitialStatus = (programsQty) => {
                 }
                 break;
         }
-        appState.batches[batchNumber][i % PROGS_BY_BATCH] = {
+        program = {
             idProgram: idProgram,
             maxTime: maxTime,
             num1: num1,
@@ -126,8 +131,17 @@ const setInitialStatus = (programsQty) => {
             num2: num2,
             remainingTime: maxTime,
             elapsedTime: 0,
-            batchNumber : batchNumber + 1
+            lockedTime: 0,
+            arrivalTime: 0,
         };
+        if (i === 0) {
+            appState.programs.executing = program;
+            appState.programs.executing.responseTime = 0;
+        } else if (i < MEMORY_SIZE) {
+            appState.programs.ready.push(program);
+        } else {
+            appState.programs.new.push(program);
+        }
     }
 }
 
@@ -135,7 +149,7 @@ const setListeners = () => {
     document.onkeypress = (e) => {
         if (appState.action === 'continue' && (e.key === 'e' || e.key === 'E')) {
             appState.action = 'e/s-interruption';
-        } else if (appState.action !== 'continue' && (e.key === 'w' || e.key === 'W')) {
+        } else if (appState.action === 'continue' && (e.key === 'w' || e.key === 'W')) {
             appState.action = 'error';
         } else if (e.key === 'p' || e.key === 'P') {
             appState.action = 'pause';
@@ -150,19 +164,16 @@ const executeIfIsValid = () => {
     var quantity = validateQuantity();
     if ( quantity ) { //If quantity is greater than 0
         setInitialStatus( quantity );
-        changeToExcecutionView();
+        changeToExecutionView();
         render();
         setListeners();
         runApp();
     }
 }
 
-const changeToExcecutionView = () => {
-    var initForm  = document.getElementById('init-form');
-    var execution = document.getElementById('execution');
-
-    initForm.setAttribute('class', 'hidden');
-    execution.removeAttribute('class');
+const changeToExecutionView = () => {
+    document.getElementById('init-form').setAttribute('class', 'hidden');
+    document.getElementById('execution').removeAttribute('class');
 }
 
 const getOperation = ( n1 , n2 , op ) => {
@@ -231,27 +242,27 @@ const getOpAndResult = (program) => {
     return opAndResult;
 }
 
-const batchRemove = () => {
-    var oldBatch = document.getElementById('current-batch');
-    if (oldBatch) {
-        oldBatch.remove();
+const containerRemove = (containerId) => {
+    var container = document.getElementById(containerId);
+    if (container) {
+        container.remove();
     }
 }
 
-const renderBatch = (batch) => {
+const renderReady = (readyList) => {
     var spanId;
     var spanMte;
     var spanRemain;
     var content;
-    var batchesDiv = document.createElement( "div" );
+    var readyDiv = document.createElement( "div" );
 
-    batchRemove(); //Remove the old batch
+    containerRemove('current-ready'); //Remove the old ready list
 
-    if (batch !== undefined) {
-        batchesDiv.setAttribute( 'id' , 'current-batch' );
-        CONTAINERS.batch.appendChild( batchesDiv );
+    if (readyList.length > 0) {
+        readyDiv.setAttribute( 'id' , 'current-ready' );
+        CONTAINERS.ready.appendChild( readyDiv );
 
-        batch.forEach(function (program) {
+        readyList.forEach(function (program) {
             spanId     = document.createElement( "span" );
             spanMte    = document.createElement( "span" );
             spanRemain = document.createElement( "span" );
@@ -264,15 +275,42 @@ const renderBatch = (batch) => {
             content = document.createTextNode( program.remainingTime );
             spanRemain.appendChild( content );
             spanRemain.setAttribute( 'class' , 'left remaining-time' );
-            batchesDiv.appendChild( spanId );
-            batchesDiv.appendChild( spanMte );
-            batchesDiv.appendChild( spanRemain );
+            readyDiv.appendChild( spanId );
+            readyDiv.appendChild( spanMte );
+            readyDiv.appendChild( spanRemain );
+        });
+    }
+}
+
+const renderLocked = (lockedList) => {
+    var spanId;
+    var spanLockedTime;
+    var content;
+    var lockedDiv = document.createElement( "div" );
+
+    containerRemove('current-locked'); //Remove the old locked list
+
+    if (lockedList.length > 0) {
+        lockedDiv.setAttribute( 'id' , 'current-locked' );
+        CONTAINERS.locked.appendChild( lockedDiv );
+
+        lockedList.forEach(function (program) {
+            spanId          = document.createElement( "span" );
+            spanLockedTime = document.createElement( "span" );
+            content         = document.createTextNode( program.idProgram );
+            spanId.appendChild( content );
+            spanId.setAttribute( 'class' , 'left' );
+            content = document.createTextNode( program.lockedTime );
+            spanLockedTime.appendChild( content );
+            spanLockedTime.setAttribute( 'class' , 'right' );
+            lockedDiv.appendChild( spanId );
+            lockedDiv.appendChild( spanLockedTime );
         });
     }
 }
 
 const renderCurrentProcess = (process) => {
-    if (process !== undefined) {
+    if (process !== null) {
         INPUTS.process.operation.value     = getOperation(process.num1, process.num2, process.op);
         INPUTS.process.maxTime.value       = process.maxTime;
         INPUTS.process.id.value            = process.idProgram;
@@ -287,21 +325,13 @@ const renderCurrentProcess = (process) => {
     }
 }
 
-const resultsRemove = () => {
-    var oldResults = document.getElementById('current-results');
-    if (oldResults) {
-        oldResults.remove();
-    }
-}
-
 const renderResults = (results) => {
     var spanId;
     var spanOpAndResult;
-    var spanBatchNumber;
     var content;
     var resultsDiv = document.createElement( "div" );
 
-    resultsRemove(); //Remove the old batch
+    containerRemove('current-results'); //Remove the old results
 
     resultsDiv.setAttribute( 'id' , 'current-results' );
     CONTAINERS.results.appendChild( resultsDiv );
@@ -309,76 +339,191 @@ const renderResults = (results) => {
     results.forEach(function (program) {
         spanId          = document.createElement( "span" );
         spanOpAndResult = document.createElement( "span" );
-        spanBatchNumber = document.createElement( "span" );
 
         spanId.setAttribute( 'class', 'col-md-3' );
-        spanOpAndResult.setAttribute( 'class', 'col-md-6' );
-        spanBatchNumber.setAttribute( 'class', 'col-md-3 center-text' );
+        spanOpAndResult.setAttribute( 'class', 'col-md-9' );
 
         content = document.createTextNode( program.idProgram );
         spanId.appendChild( content );
         content = document.createTextNode( getOpAndResult(program) );
         spanOpAndResult.appendChild( content );
-        content = document.createTextNode( program.batchNumber );
-        spanBatchNumber.appendChild( content );
         resultsDiv.appendChild( spanId );
         resultsDiv.appendChild( spanOpAndResult );
-        resultsDiv.appendChild( spanBatchNumber );
+    });
+}
+
+const renderExecutionResults = (finishedProcesses) => {
+    var tr;
+    var td;
+    var content;
+    var tBody = document.createElement( "tbody" );
+
+    CONTAINERS.execResults.removeAttribute( 'class' ); //Show the results container
+
+    containerRemove('exec-results-tbody'); //Remove the old execution results
+
+    tBody.setAttribute( 'id' , 'exec-results-tbody' );
+    CONTAINERS.execResultsTable.appendChild( tBody );
+
+    finishedProcesses.forEach(function (program) {
+        tr = document.createElement( "tr" );
+        td = document.createElement( "td" );
+        content = document.createTextNode( program.idProgram );
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        content = document.createTextNode( getOpAndResult(program) );
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        content = document.createTextNode( program.maxTime );
+        td.appendChild( content );
+        tr.appendChild( td );
+        td = document.createElement( "td" );
+        content = document.createTextNode( program.arrivalTime );
+        td.appendChild( content );
+        tr.appendChild( td );
+        //if ( program.remainingTime === 0 ) {
+            td = document.createElement( "td" );
+            content = document.createTextNode( program.endTime );
+            td.appendChild( content );
+            tr.appendChild( td );
+            td = document.createElement( "td" );
+            content = document.createTextNode( program.endTime - program.arrivalTime );
+            td.appendChild( content );
+            tr.appendChild( td );
+            td = document.createElement( "td" );
+            content = document.createTextNode( program.responseTime );
+            td.appendChild( content );
+            tr.appendChild( td );
+            td = document.createElement( "td" );
+            content = document.createTextNode( program.endTime - program.arrivalTime - program.elapsedTime );
+            td.appendChild( content );
+            tr.appendChild( td );
+            td = document.createElement( "td" );
+            content = document.createTextNode( program.elapsedTime );
+            td.appendChild( content );
+            tr.appendChild( td );
+        //} else {
+            /*for ( let i = 0; i < 5; i++ ) {
+                td = document.createElement( "td" );
+                content = document.createTextNode( "ERROR" );
+                td.appendChild( content );
+                tr.appendChild( td );
+            }
+        }*/
+        tBody.appendChild( tr );
     });
 }
 
 const render = () => {
-    INPUTS.pendingBatches.value = appState.pendingBatches;
-    renderBatch(appState.batches[0]);
-    if (appState.batches.length > 0) {
-        renderCurrentProcess(appState.batches[0][0]);
-    } else {
-        renderCurrentProcess();
-    }
-    renderResults(appState.finishedPrograms);
+    INPUTS.pendingProcessQty.value = appState.pendingProcessQty;
+    renderReady(appState.programs.ready);
+    renderLocked(appState.programs.locked);
+    renderCurrentProcess(appState.programs.executing);
+    renderResults(appState.programs.finished);
     INPUTS.totalElapsedTime.value = appState.totalElapsedTime;
 }
 
 const continueAction = () => {
-    if (appState.batches.length > 0) {
+    if (appState.programs.executing !== null) {
         setTimeout(function () {
-            if (appState.batches[0][0].remainingTime > 0) {
-                appState.batches[0][0].remainingTime--;
+            if (appState.programs.executing.remainingTime > 0) {
+                appState.programs.executing.remainingTime--;
+                appState.programs.executing.elapsedTime++;
                 appState.totalElapsedTime++;
-            } else {
-                appState.finishedPrograms.push(appState.batches[0].shift());
-                if (appState.batches[0].length === 0) {
-                    appState.batches.shift();
-                    if (appState.pendingBatches > 0) {
-                        appState.pendingBatches--;
+                if (appState.programs.locked.length > 0) {
+                    appState.programs.locked.forEach(function (program) {
+                        program.lockedTime++;
+                    });
+                    if (appState.programs.locked[0].lockedTime === WAIT_TIME) {
+                        appState.programs.locked[0].lockedTime = 0;
+                        appState.programs.ready.push(appState.programs.locked.shift());
                     }
+                }
+            } else {
+                appState.programs.executing.endTime = appState.totalElapsedTime;
+                appState.programs.finished.push(appState.programs.executing);
+                if (appState.programs.new.length > 0) {
+                    appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
+                    appState.programs.ready.push(appState.programs.new.shift());
+                    appState.pendingProcessQty--;
+                }
+                if (appState.programs.ready.length > 0) {
+                    if (appState.programs.ready[0].responseTime === undefined) {
+                        appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
+                    }
+                    appState.programs.executing = appState.programs.ready.shift();
+                } else {
+                    appState.programs.executing = null;
                 }
             }
             render();
             runApp();
         }, 1000);
+    } else if (appState.programs.locked.length > 0) {
+        setTimeout(function () {
+            appState.totalElapsedTime++;
+            appState.programs.locked.forEach(function (program) {
+                program.lockedTime++;
+            });
+            if (appState.programs.locked[0].lockedTime === WAIT_TIME) {
+                appState.programs.locked[0].lockedTime = 0;
+                appState.programs.executing = appState.programs.locked.shift();
+            }
+            render();
+            runApp();
+        }, 1000);
+    } else {
+        // render results data
+        renderExecutionResults(appState.programs.finished);
     }
 }
 
 const interruptionAction = () => {
-    if (appState.batches.length > 0) {
-        appState.batches[0].push(appState.batches[0].shift());
+    if (appState.programs.executing !== null) {
+        appState.programs.locked.push(appState.programs.executing);
+        if (appState.programs.ready.length > 0) {
+            if (appState.programs.ready[0].responseTime === undefined) {
+                appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
+            }
+            appState.programs.executing = appState.programs.ready.shift();
+        } else {
+            appState.programs.executing = null;
+        }
+        appState.action = 'continue';
+        render();
+        runApp();
+    } else {
         appState.action = 'continue';
         runApp();
     }
 }
 
 const errorAction = () => {
-    if (appState.batches.length > 0) {
-        appState.finishedPrograms.push(appState.batches[0].shift());
-        if (appState.batches[0].length === 0) {
-            appState.batches.shift();
-            if (appState.batches.length === 0) {
-                render();
-            } else {
-                appState.pendingBatches--;
-            }
+    if (appState.programs.executing !== null) {
+        /*if (appState.programs.executing.remainingTime === 0) {
+            appState.programs.executing.endTime = appState.totalElapsedTime;
+        }*/
+        appState.programs.executing.endTime = appState.totalElapsedTime;
+        appState.programs.finished.push(appState.programs.executing);
+        if (appState.programs.new.length > 0) {
+            appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
+            appState.programs.ready.push(appState.programs.new.shift());
+            appState.pendingProcessQty--;
         }
+        if (appState.programs.ready.length > 0) {
+            if (appState.programs.ready[0].responseTime === undefined) {
+                appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
+            }
+            appState.programs.executing = appState.programs.ready.shift();
+        } else {
+            appState.programs.executing = null;
+        }
+        appState.action = 'continue';
+        render();
+        runApp();
+    } else {
         appState.action = 'continue';
         runApp();
     }

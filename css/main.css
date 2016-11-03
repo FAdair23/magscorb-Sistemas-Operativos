@@ -1,6 +1,13 @@
 * {
     color: #225544;
 }
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+th, td {
+    border: 1px solid #10AABA;
+}
 #init-form {
     width: 500px;
     margin: 0 auto;
@@ -120,9 +127,6 @@ span#counter {
     width: 90%;
     border: none;
 }
-#execution h1 {
-    padding: 0 30px;
-}
 h2 {
     font-size: 16px;
 }
@@ -142,14 +146,25 @@ h2 {
     display: inline-block;
     height: 32px;
 }
-.col-md-6 {
-    width: 48%;
+.col-md-9 {
+    width: 72%;
     margin: 0 auto;
     display: inline-block;
+    height: 32px;
 }
 .hidden {
     display: none;
 }
 .center-text {
     text-align: center;
+}
+#process {
+    float: right;
+}
+#results {
+    float: right;
+    width: 37%;
+}
+#current-locked>.left {
+    clear: left;
 }
