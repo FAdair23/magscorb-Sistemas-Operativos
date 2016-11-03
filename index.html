@@ -13,25 +13,30 @@
         <div class="container">
             <form id="init-form" onsubmit="return false;" >
                 <div class="form-container">
-                    <h1>¿Cuántos Programas quieres ejecutar?</h1>
+                    <h1>Número de procesos inicial</h1>
                     <div>
                         <input type="number" id="process-quantity" name="process-quantity" placeholder="Cantidad de procesos">
                     </div>
-                    <button type="submit" form="init-form" value="Submit" id="btn-submit" onClick="executeIfIsValid()">Ejecutar</button>
+                    <button type="submit" form="init-form" value="Submit" id="btn-submit" onClick="executeIfIsValid()">Comenzar</button>
                 </div>
             </form>
             <!-- Segunda Parte -->
             <div id="execution" class="hidden">
                 <div class="counter">
-                    <label for="pending-batches">Número de lotes pendientes:</label>
-                    <input type="number" id="pending-batches" name="pending-batches" value="0" disabled>
+                    <label for="pending-process">Número de procesos en la lista de nuevos:</label>
+                    <input type="number" id="pending-process" name="pending-process" value="0" disabled>
                 </div>
                 <section class="main-section">
-                    <section id="batches">
-                        <h1>Lote en ejecución</h1>
+                    <section id="ready-process">
+                        <h1>Procesos listos</h1>
                         <h2 class="left">Id Programa</h2>
                         <h2 class="left">TME</h2>
                         <h2 class="left">Restante</h2>
+                    </section>
+                    <section id="results">
+                        <h1>Procesos terminados</h1>
+                        <h2 class='col-md-3'>Id</h2>
+                        <h2 class='col-md-9'>Operación y resultado</h2>
                     </section>
                     <section id="process">
                         <h1>Proceso en ejecución</h1>
@@ -46,17 +51,35 @@
                         <label for="remaining-time-process">Tiempo restante:</label>
                         <input type="number" id="remaining-time-process" name="remaining-time-process" disabled>
                     </section>
-                    <section id="results">
-                        <h1>Procesos terminados</h1>
-                        <h2 class='col-md-3'>Id</h2>
-                        <h2 class='col-md-6'>Operación y resultado</h2>
-                        <h2 class='col-md-3'># Lote</h2>
+                    <section id="locked-process">
+                        <h1>Procesos bloqueados</h1>
+                        <h2 class="left">Id Programa</h2>
+                        <h2 class="right">TT en bloqueado</h2>
                     </section>
                 </section>
                 <div class="counter">
                     <label for="total-time">Tiempo total transcurrido:</label>
                     <input type="number" id="total-time" name="total-time" value="0" disabled>
                 </div>
+            </div>
+            <!-- Resultados -->
+            <div id="execution-results" class="hidden">
+                <h1>Resultados de la ejecución</h1>
+                <table id="execution-results-table">
+                    <thead>
+                        <tr>
+                            <th>Id</th>
+                            <th>Operación y resultado</th>
+                            <th>TME</th>
+                            <th>T Llegada</th>
+                            <th>T Finalización</th>
+                            <th>T Retorno</th>
+                            <th>T Respuesta</th>
+                            <th>T Espera</th>
+                            <th>T Servicio</th>
+                        </tr>
+                    </thead>
+                </table>
             </div>
         </div>
     </body>
