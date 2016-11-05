@@ -60,10 +60,39 @@ const validateQuantity = () => {
         inputProcessQuantity.setAttribute( 'class' , 'error' );
         appendError( inputProcessQuantity , errorMessage );
     } else {
+        if ( inputProcessQuantity.hasAttribute('class') ) {
+            removeError( inputProcessQuantity );
+        }
         quantity = inputProcessQuantity.value;
     }
 
     return quantity;
+}
+
+const validateQuantum = () => {
+    var errorMessage;
+    var inputQuantum = document.getElementById('quantum-value');
+    var quantum      = 0; //A falsy value
+
+    if ( inputQuantum.value.trim() === '' || inputQuantum.value < 1 ) {
+        if ( inputQuantum.getAttribute( 'class' ) === 'error' ) {
+            removeError( inputQuantum );
+        }
+        if ( inputQuantum.value.trim() === '' ) {
+            errorMessage = 'Campo requerido';
+        } else {
+            errorMessage = 'El quantum debe ser mayor a cero';
+        }
+        inputQuantum.setAttribute( 'class' , 'error' );
+        appendError( inputQuantum , errorMessage );
+    } else {
+        if ( inputQuantum.hasAttribute('class') ) {
+            removeError( inputQuantum );
+        }
+        quantum = inputQuantum.value;
+    }
+
+    return quantum;
 }
 
 const generateProgram = () => {
@@ -125,7 +154,7 @@ const generateProgram = () => {
     return program;
 }
 
-const setInitialStatus = (programsQty) => {
+const setInitialStatus = (programsQty, quantum) => {
     let program;
 
     appState.programs = {
@@ -138,6 +167,7 @@ const setInitialStatus = (programsQty) => {
     appState.lastId           = 0;
     appState.totalElapsedTime = 0;
     appState.action           = 'continue';
+    appState.quantum          = quantum;
 
     for (let i = 0; i < programsQty; i++) {
         program = generateProgram();
@@ -179,9 +209,10 @@ const setListeners = () => {
 }
 
 const executeIfIsValid = () => {
-    var quantity = validateQuantity();
-    if ( quantity ) { //If quantity is greater than 0
-        setInitialStatus( quantity );
+    let quantity = validateQuantity();
+    let quantum  = validateQuantum();
+    if ( quantity  && quantum) { //If quantity and quantum are greater than 0
+        setInitialStatus( quantity, quantum );
         changeToExecutionView();
         render();
         setListeners();
@@ -569,6 +600,17 @@ const continueAction = () => {
                 appState.programs.executing.remainingTime--;
                 appState.programs.executing.elapsedTime++;
                 appState.totalElapsedTime++;
+                if (appState.programs.executing.elapsedTime % appState.quantum === 0) {
+                    appState.programs.ready.push(appState.programs.executing);
+                    if (appState.programs.ready.length > 0) {
+                        if (appState.programs.ready[0].responseTime === undefined) {
+                            appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
+                        }
+                        appState.programs.executing = appState.programs.ready.shift();
+                    } else {
+                        appState.programs.executing = null;
+                    }
+                }
                 if (appState.programs.locked.length > 0) {
                     appState.programs.locked.forEach(function (program) {
                         program.lockedTime++;
