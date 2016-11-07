@@ -1,170 +1,37 @@
-* {
-    color: #225544;
-}
-table {
-    border-collapse: collapse;
-    width: 100%;
-}
-th, td {
-    border: 1px solid #10AABA;
-}
-#init-form {
-    width: 500px;
-    margin: 0 auto;
-}
-.container {
-    width: 90%;
-    margin: 0 auto;
-}
-#execution {
-    margin: 40px auto;
-    width: 1100px;
-}
-.form-container {
-    padding: 0 30px 30px 30px;
-    overflow: auto;
-}
-.form-container > div {
-    margin-bottom: 10px;
-    overflow: auto;
-}
-input,button {
-    float: left;
-}
-input {
-    width: 95%;
-    border-radius: 5px;
-    padding: 4px;
-}
-.operation div.op {
-    width: 32%;
-    float: left;
-    margin-right: 5px;
-}
-.operation input,select {
-    width: 90%;
-    border-radius: 5px;
-    padding: 4px;
-    float: none;
-}
-.operation select {
-    width: 100%;
-}
 h1 {
-    font-size: 26px;
+    width: 310px;
+    margin: 20px auto;
 }
 button {
-    font-size: 16px;
+    float: right;
+    margin-right: 134px;
+}
+.status {
+    display: inline-block;
+    width: 220px;
+    margin-left: 96px;
+    margin-bottom: 10px;
+}
+.status > input {
+    width: 56%;
+    float: right;
     font-weight: bold;
-    padding: 3px 9px;
-    background-color: #73CC9A;
-    border: 2px solid #69BB84;
-    border-radius: 5px;
-    color: #223525;
 }
-#btn-submit {
-    float: right;
-    margin-right: 10px;
-}
-button:hover,button:focus {
-    background-color: #73CC69;
-    border-color: #50AA66;
-    color: #112214;
-}
-button:active {
-    background-color: #55AA53;
-    border-color: #67DD77;
-}
-.error {
-    border-color: #FF4949;
-}
-span {
-    float: left;
-    color: #BB0000;
-    margin-top: 4px;
-    font-size: 14px;
-}
-span.counter-container {
-    float: right;
-    margin-right: 40px;
-    margin-top: 0;
-    color: inherit;
-}
-span#counter {
-    float: right;
-    color: inherit;
-    margin-top: 0;
-    margin-left: 4px;
-}
-#execution span {
-    color: inherit;
-}
-.counter label, .counter input{
-    width: 25%;
-    float: left;
-}
-.counter input{
-    border: none;
-}
-.counter {
-    overflow: auto;
-    clear: both;
-}
-.main-section {
-    margin: 10px 0;
-    overflow: auto;
-}
-.main-section section {
-    width: 28%;
-    margin: 0 1%;
-    float: left;
-    border-right: 1px dashed;
-}
-.main-section label {
-    display: block;
-}
-.main-section input {
-    width: 90%;
-    border: none;
-}
-h2 {
-    font-size: 16px;
-}
-.left {
-    float: left;
-    margin-left: 10px;
-    width: 30%;
-}
-.right {
-    float: right;
-    margin-right: 10px;
-    clear: right;
-}
-.col-md-3 {
-    width: 24%;
+.container {
+    width: 80%;
     margin: 0 auto;
-    display: inline-block;
-    height: 32px;
 }
-.col-md-9 {
-    width: 72%;
-    margin: 0 auto;
-    display: inline-block;
-    height: 32px;
+.container > div {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid;
+    width: 100px;
+    height: 100px;
 }
-.hidden {
-    display: none;
+.empty {
+    background-color: #6AE;
 }
-.center-text {
-    text-align: center;
-}
-#process {
-    float: right;
-}
-#results {
-    float: right;
-    width: 37%;
-}
-#current-locked>.left {
-    clear: left;
+.occupied {
+    background-color: #F22;
 }
