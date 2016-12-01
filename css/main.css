@@ -1,6 +1,3 @@
-* {
-    color: #225544;
-}
 table {
     border-collapse: collapse;
     width: 100%;
@@ -165,6 +162,19 @@ h2 {
     float: right;
     width: 37%;
 }
-#current-locked>.left {
+/*#current-locked>.left {
     clear: left;
+}*/
+.occupied-by-os {
+    background-color: #111;
+    color: #EEE;
+}
+.executing {
+    background-color: #E11;
+}
+.ready {
+    background-color: #DD1;
+}
+.locked {
+    background-color: #D1D;
 }
