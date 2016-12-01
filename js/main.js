@@ -10,6 +10,7 @@ document.onreadystatechange = function () {
     if (document.readyState === 'complete') {
         INPUTS = {
             pendingProcessQty: document.getElementById('pending-process'),
+            suspendedProcessQty: document.getElementById('suspended-process'),
             process: {
                 operation: document.getElementById('op-process'),
                 maxTime: document.getElementById('time-process'),
@@ -218,6 +219,7 @@ const setInitialStatus = (programsQty, quantum) => {
         executing : null,
         ready: [],
         locked: [],
+        suspended: [],
         new: [],
         finished: []
     }
@@ -247,16 +249,37 @@ const setInitialStatus = (programsQty, quantum) => {
 const setListeners = () => {
     document.onkeypress = (e) => {
         if (appState.action === 'continue') {
-            if (e.key === 'e' || e.key === 'E') {
-                appState.action = 'e/s-interruption';
-            } else if (e.key === 'w' || e.key === 'W') {
-                appState.action = 'error';
-            } else if (e.key === 'u' || e.key === 'U') {
-                appState.action = 'generateProgram';
-            } else if (e.key === 'b' || e.key === 'B') {
-                appState.action = 'showBCP';
-            } else if (e.key === 'p' || e.key === 'P' || e.key === 't' || e.key === 'T') {
-                appState.action = 'pause';
+            switch (e.key) {
+                case 'e':
+                case 'E':
+                    appState.action = 'e/s-interruption';
+                    break;
+                case 'w':
+                case 'W':
+                    appState.action = 'error';
+                    break;
+                case 'u':
+                case 'U':
+                    appState.action = 'generateProgram';
+                    break;
+                case 'b':
+                case 'B':
+                    appState.action = 'showBCP';
+                    break;
+                case 'p':
+                case 'P':
+                case 't':
+                case 'T':
+                    appState.action = 'pause';
+                    break;
+                case 's':
+                case 'S':
+                    appState.action = 'suspendProcess';
+                    break;
+                case 'r':
+                case 'R':
+                    appState.action = 'returnProcess';
+                    break;
             }
         } else if (e.key === 'c' || e.key === 'C') {
             if (appState.action === 'pause' || appState.action === 'showBCP') {
@@ -780,7 +803,8 @@ const renderExecutionResults = (finishedProcesses) => {
 };
 
 const render = () => {
-    INPUTS.pendingProcessQty.value = appState.programs.new.length;
+    INPUTS.pendingProcessQty.value   = appState.programs.new.length;
+    INPUTS.suspendedProcessQty.value = appState.programs.suspended.length;
     renderProcessToEnter(appState.programs.new);
     renderMemoryTable();
     //renderLocked(appState.programs.locked);
@@ -871,10 +895,17 @@ const continueAction = () => {
             render();
             runApp();
         }, 1000);
-    } else {
-        // render results data
+    } else if (appState.programs.suspended.length === 0) {
         appState.action = 'finalize';
+        // render results data
         renderExecutionResults(appState.programs.finished);
+    } else {
+        setTimeout(function () {
+            appState.totalElapsedTime++;
+
+            render();
+            runApp();
+        }, 1000);
     }
 };
 
@@ -935,6 +966,45 @@ const errorAction = () => {
     }
 };
 
+const suspendProcessAction = () => {
+    if (appState.programs.locked.length > 0) {
+        setBytesStatus(appState.programs.locked[0], '');
+        pullProgramFromMemory(appState.programs.locked[0]);
+        appState.programs.suspended.push(appState.programs.locked.shift());
+        if (appState.programs.new.length > 0 && appState.programs.new[0].pages <= appState.freeFrames.length) {
+            appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
+            pushProgramInMemory(appState.programs.new[0]);
+            setBytesStatus(appState.programs.new[0], 'ready');
+            appState.programs.ready.push(appState.programs.new.shift());
+        }
+        if (appState.programs.ready.length > 0) {
+            if (appState.programs.ready[0].responseTime === undefined) {
+                appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
+            }
+        }
+        appState.action = 'continue';
+        render();
+        runApp();
+    } else {
+        appState.action = 'continue';
+        runApp();
+    }
+};
+
+const returnProcessAction = () => {
+    if (appState.programs.suspended.length > 0 && appState.programs.suspended[0].pages <= appState.freeFrames.length) {
+        pushProgramInMemory(appState.programs.suspended[0]);
+        setBytesStatus(appState.programs.suspended[0], 'locked');
+        appState.programs.locked.push(appState.programs.suspended.shift());
+        appState.action = 'continue';
+        render();
+        runApp();
+    } else {
+        appState.action = 'continue';
+        runApp();
+    }
+};
+
 const generateProgramAction = () => {
     let program    = generateProgram();
 
@@ -972,5 +1042,12 @@ const runApp = () => {
             break;
         case 'showBCP':
             showBCPAction();
+            break;
+        case 'suspendProcess':
+            suspendProcessAction();
+            break;
+        case 'returnProcess':
+            returnProcessAction();
+            break;
     }
 };
