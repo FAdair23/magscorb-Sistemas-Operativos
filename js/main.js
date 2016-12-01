@@ -2,6 +2,10 @@ var appState = {};
 var INPUTS;
 var CONTAINERS;
 
+Array.prototype.clone = function() {
+	return this.slice(0);
+};
+
 document.onreadystatechange = function () {
     if (document.readyState === 'complete') {
         INPUTS = {
@@ -11,19 +15,21 @@ document.onreadystatechange = function () {
                 maxTime: document.getElementById('time-process'),
                 id: document.getElementById('id-process'),
                 elapsedTime: document.getElementById('past-time-process'),
-                remainingTime: document.getElementById('remaining-time-process')
+                remainingTime: document.getElementById('remaining-time-process'),
+                quantum: document.getElementById('quantum-process'),
             },
             totalElapsedTime: document.getElementById('total-time')
         };
 
         CONTAINERS = {
-            ready: document.getElementById('ready-process'),
-            locked: document.getElementById('locked-process'),
+            processToEnter: document.getElementById('process-to-enter'),
+            //locked: document.getElementById('locked-process'),
             results: document.getElementById('results'),
             execResults: document.getElementById('execution-results'),
             execResultsTable: document.getElementById('execution-results-table'),
             bcp: document.getElementById('bcp'),
             bcpTable: document.getElementById('bcp-table'),
+            memoryTable: document.getElementById('memory-table'),
         };
     }
 };
@@ -34,14 +40,14 @@ const appendError = ( node , errorMessage ) => {
     var message   = document.createTextNode( errorMessage );
     errorSpan.appendChild( message );
     parent.appendChild( errorSpan );
-}
+};
 
 const removeError = ( node ) => {
     var parent    = node.parentNode;
     var errorSpan = node.nextElementSibling;
     node.removeAttribute( 'class' );
     parent.removeChild( errorSpan );
-}
+};
 
 const validateQuantity = () => {
     var errorMessage;
@@ -67,7 +73,7 @@ const validateQuantity = () => {
     }
 
     return quantity;
-}
+};
 
 const validateQuantum = () => {
     var errorMessage;
@@ -93,20 +99,22 @@ const validateQuantum = () => {
     }
 
     return quantum;
-}
+};
 
 const generateProgram = () => {
     let program;
-    let idProgram;
+    let id;
     let maxTime;
     let num1;
     let op;
     let num2;
+    let programSize;
 
     appState.lastId++;
-    idProgram = appState.lastId;
-    maxTime   = Math.floor((Math.random() * MAX_TIME_LIMIT) + 1);
-    op        = Math.floor((Math.random() * OPER_LIMIT) + 1);
+    id          = appState.lastId;
+    maxTime     = Math.floor((Math.random() * (MAX_TIME_LIMIT - (MIN_TIME_LIMIT - 1))) + MIN_TIME_LIMIT);
+    op          = Math.floor((Math.random() * OPER_LIMIT) + 1);
+    programSize = Math.floor((Math.random() * (MAX_SIZE - (MIN_SIZE - 1))) + MIN_SIZE);
     switch(op) {
         case ADDITION:
         case SUBSTRACTION:
@@ -140,7 +148,7 @@ const generateProgram = () => {
             break;
     }
     program = {
-        idProgram: idProgram,
+        id: id,
         maxTime: maxTime,
         num1: num1,
         op: op,
@@ -149,14 +157,63 @@ const generateProgram = () => {
         elapsedTime: 0,
         lockedTime: 0,
         arrivalTime: 0,
+        quantum: 0,
+        size: programSize,
+        pages: Math.ceil(programSize / FRAME_SIZE),
+        frames: [],
     };
 
     return program;
+};
+
+const pushProgramInMemory = (program) => {
+    for (var i = 0; i < program.pages; i++) {
+        program.frames.push(appState.freeFrames.shift());
+    }
+};
+
+const pullProgramFromMemory = (program) => {
+    let framesLength = program.frames.length;
+
+    for (var i = 0; i < framesLength; i++) {
+        appState.freeFrames.push(program.frames.shift());
+    }
+};
+
+const setBytesStatus = (program, status) => {
+    program.frames.forEach(function (frame, index) {
+        if (index === program.frames.length - 1 && (program.size % FRAME_SIZE !== 0)) {
+            for (var i = 0; i < FRAME_SIZE; i++) {
+                if (i < program.size % FRAME_SIZE) {
+                    if (status === '') {
+                        appState.memoryFrames[frame.id].bytes[i].text = '';
+                    } else {
+                        appState.memoryFrames[frame.id].bytes[i].text = 'ID: ' + program.id;
+                    }
+                    appState.memoryFrames[frame.id].bytes[i].className = status;
+                } else {
+                    appState.memoryFrames[frame.id].bytes[i].text      = '';
+                    appState.memoryFrames[frame.id].bytes[i].className = '';
+                }
+            }
+        } else {
+            for (var i = 0; i < FRAME_SIZE; i++) {
+                if (status === '') {
+                    appState.memoryFrames[frame.id].bytes[i].text = '';
+                } else {
+                    appState.memoryFrames[frame.id].bytes[i].text = 'ID: ' + program.id;
+                }
+                appState.memoryFrames[frame.id].bytes[i].className = status;
+            }
+        }
+    });
 }
 
 const setInitialStatus = (programsQty, quantum) => {
     let program;
 
+    setInitialMemoryStatus();
+    loadOSInMemory();
     appState.programs = {
         executing : null,
         ready: [],
@@ -172,15 +229,20 @@ const setInitialStatus = (programsQty, quantum) => {
     for (let i = 0; i < programsQty; i++) {
         program = generateProgram();
         if (i === 0) {
-            appState.programs.executing = program;
+            appState.programs.executing              = program;
+            appState.programs.executing.quantum      = appState.quantum;
             appState.programs.executing.responseTime = 0;
-        } else if (i < MEMORY_SIZE) {
+            pushProgramInMemory(program);
+            setBytesStatus(program, 'executing');
+        } else if (program.pages <= appState.freeFrames.length && appState.programs.new.length === 0) {
             appState.programs.ready.push(program);
+            pushProgramInMemory(program);
+            setBytesStatus(program, 'ready');
         } else {
             appState.programs.new.push(program);
         }
     }
-}
+};
 
 const setListeners = () => {
     document.onkeypress = (e) => {
@@ -193,7 +255,7 @@ const setListeners = () => {
                 appState.action = 'generateProgram';
             } else if (e.key === 'b' || e.key === 'B') {
                 appState.action = 'showBCP';
-            } else if (e.key === 'p' || e.key === 'P') {
+            } else if (e.key === 'p' || e.key === 'P' || e.key === 't' || e.key === 'T') {
                 appState.action = 'pause';
             }
         } else if (e.key === 'c' || e.key === 'C') {
@@ -206,7 +268,7 @@ const setListeners = () => {
             }
         }
     };
-}
+};
 
 const executeIfIsValid = () => {
     let quantity = validateQuantity();
@@ -218,12 +280,12 @@ const executeIfIsValid = () => {
         setListeners();
         runApp();
     }
-}
+};
 
 const changeToExecutionView = () => {
     document.getElementById('init-form').setAttribute('class', 'hidden');
     document.getElementById('execution').removeAttribute('class');
-}
+};
 
 const getOperation = ( n1 , n2 , op ) => {
     var operation;
@@ -251,7 +313,7 @@ const getOperation = ( n1 , n2 , op ) => {
             break;
     }
     return operation;
-}
+};
 
 const getResults = ( n1 , n2 , op ) => {
     var result;
@@ -279,7 +341,7 @@ const getResults = ( n1 , n2 , op ) => {
             break;
     }
     return result;
-}
+};
 
 const getOpAndResult = (program) => {
     var operation   = getOperation( program.num1, program.num2, program.op );
@@ -289,49 +351,181 @@ const getOpAndResult = (program) => {
                         : 'ERROR';
     var opAndResult = operation + ' = ' + result;
     return opAndResult;
-}
+};
 
 const containerRemove = (containerId) => {
     var container = document.getElementById(containerId);
     if (container) {
         container.remove();
     }
-}
+};
 
-const renderReady = (readyList) => {
-    var spanId;
-    var spanMte;
-    var spanRemain;
-    var content;
-    var readyDiv = document.createElement( "div" );
+const renderMemoryTableHead = () => {
+    let content;
+    let th;
+    let tHead = document.createElement( "thead" );
+    let tRow  = document.createElement( "tr" );
 
-    containerRemove('current-ready'); //Remove the old ready list
+    th      = document.createElement( "th" );
+    content = document.createTextNode( "No. Marco" );
+    th.appendChild( content );
+    tRow.appendChild( th );
 
-    if (readyList.length > 0) {
-        readyDiv.setAttribute( 'id' , 'current-ready' );
-        CONTAINERS.ready.appendChild( readyDiv );
+    for (var i = 0; i < FRAME_SIZE; i++) {
+        th      = document.createElement( "th" );
+        content = document.createTextNode( "B" + i );
+        th.appendChild( content );
+        tRow.appendChild( th );
+    }
+    tHead.appendChild( tRow );
+    CONTAINERS.memoryTable.appendChild( tHead );
+};
 
-        readyList.forEach(function (program) {
-            spanId     = document.createElement( "span" );
-            spanMte    = document.createElement( "span" );
-            spanRemain = document.createElement( "span" );
-            content    = document.createTextNode( program.idProgram );
-            spanId.appendChild( content );
-            spanId.setAttribute( 'class' , 'left' );
-            content    = document.createTextNode( program.maxTime );
-            spanMte.appendChild( content );
-            spanMte.setAttribute( 'class' , 'left' );
-            content = document.createTextNode( program.remainingTime );
-            spanRemain.appendChild( content );
-            spanRemain.setAttribute( 'class' , 'left remaining-time' );
-            readyDiv.appendChild( spanId );
-            readyDiv.appendChild( spanMte );
-            readyDiv.appendChild( spanRemain );
+const setInitialMemoryStatus = () => {
+    let frame;
+    let id;
+    let byte;
+    let className;
+    let text;
+    let bytes;
+    let framesQty = Math.ceil(MEMORY_SIZE / FRAME_SIZE);
+
+    appState.memoryFrames = [];
+    for (var i = 0; i < framesQty; i++) {
+        bytes  = [];
+        id     = i;
+
+        if (i !== framesQty - 1 && MEMORY_SIZE % FRAME_SIZE > 0) {
+            for (var j = 0; j < MEMORY_SIZE % FRAME_SIZE; j++) {
+                className = "";
+                text      = "";
+                byte = {
+                    className: className,
+                    text: text
+                };
+                bytes.push( byte );
+            }
+        } else {
+            for (var j = 0; j < FRAME_SIZE; j++) {
+                className = "";
+                text      = "";
+                byte = {
+                    className: className,
+                    text: text
+                };
+                bytes.push( byte );
+            }
+        }
+        frame = {
+            id: id,
+            bytes: bytes
+        };
+        appState.memoryFrames.push( frame );
+    }
+};
+
+const renderMemoryTableBody = () => {
+    let content;
+    let td;
+    let tRow;
+    let tBody       = document.createElement( "tbody" );
+    let memoryTBody = document.getElementById('memory-tbody');
+
+    if (memoryTBody) {
+        memoryTBody.remove();
+    }
+    appState.memoryFrames.forEach (function (frame, index) {
+        id      = index;
+        tRow    = document.createElement( "tr" );
+        td      = document.createElement( "td" );
+        content = document.createTextNode( index );
+        td.appendChild( content );
+        tRow.appendChild( td );
+
+        frame.bytes.forEach (function (byte) {
+            td      = document.createElement( "td" );
+            content = document.createTextNode( byte.text );
+            td.setAttribute('class', byte.className);
+            td.appendChild(content);
+            tRow.appendChild( td );
+        });
+
+        tBody.appendChild( tRow );
+    });
+
+    tBody.setAttribute('id', 'memory-tbody');
+    CONTAINERS.memoryTable.appendChild( tBody );
+};
+
+const loadOSInMemory = () => {
+    let freeFrame;
+    appState.freeFrames = appState.memoryFrames.clone();
+    let os = {
+        frames: Math.ceil(OS_SIZE / FRAME_SIZE),
+        rest: OS_SIZE % FRAME_SIZE,
+    }
+    if (os.rest === 0){
+        for (var i = 0; i < os.frames; i++) {
+            freeFrame = appState.freeFrames.shift();
+            appState.memoryFrames[freeFrame.id].bytes.forEach(function(byte) {
+                byte.className = 'occupied-by-os';
+                byte.text      = 'SO';
+            });
+        }
+    } else {
+        for (var i = 0; i < os.frames - 1; i++) {
+            freeFrame = appState.freeFrames.shift();
+            appState.memoryFrames[freeFrame.id].bytes.forEach(function(byte) {
+                byte.className = 'occupied-by-os';
+                byte.text      = 'SO';
+            });
+        }
+        freeFrame = appState.freeFrames.shift();
+        appState.memoryFrames[freeFrame.id].bytes.forEach(function(byte, index) {
+            if (index < os.rest) {
+                byte.className = 'occupied-by-os';
+                byte.text      = 'SO';
+            } else {
+                byte.className = '';
+                byte.text      = '';
+            }
         });
     }
-}
+};
 
-const renderLocked = (lockedList) => {
+const renderMemoryTable = () => {
+    if (CONTAINERS.memoryTable.childElementCount === 0) {
+        renderMemoryTableHead();
+    }
+    renderMemoryTableBody();
+};
+
+const renderProcessToEnter = (newProcessList) => {
+    var spanId;
+    var spanSize;
+    var content;
+    var processToEnterDiv = document.createElement( "div" );
+
+    containerRemove('current-process-to-enter'); //Remove the old ready list
+
+    if (newProcessList.length > 0) {
+        processToEnterDiv.setAttribute( 'id' , 'current-process-to-enter' );
+        CONTAINERS.processToEnter.appendChild( processToEnterDiv );
+
+        spanId   = document.createElement( "span" );
+        spanSize = document.createElement( "span" );
+        content  = document.createTextNode( newProcessList[0].id );
+        spanId.appendChild( content );
+        spanId.setAttribute( 'class' , 'col-md-3' );
+        content = document.createTextNode( newProcessList[0].size );
+        spanSize.appendChild( content );
+        spanSize.setAttribute( 'class' , 'col-md-9' );
+        processToEnterDiv.appendChild( spanId );
+        processToEnterDiv.appendChild( spanSize );
+    }
+};
+
+/*const renderLocked = (lockedList) => {
     var spanId;
     var spanLockedTime;
     var content;
@@ -346,7 +540,7 @@ const renderLocked = (lockedList) => {
         lockedList.forEach(function (program) {
             spanId          = document.createElement( "span" );
             spanLockedTime = document.createElement( "span" );
-            content         = document.createTextNode( program.idProgram );
+            content         = document.createTextNode( program.id );
             spanId.appendChild( content );
             spanId.setAttribute( 'class' , 'left' );
             content = document.createTextNode( WAIT_TIME - program.lockedTime );
@@ -357,22 +551,24 @@ const renderLocked = (lockedList) => {
         });
     }
 }
-
+*/
 const renderCurrentProcess = (process) => {
     if (process !== null) {
         INPUTS.process.operation.value     = getOperation(process.num1, process.num2, process.op);
         INPUTS.process.maxTime.value       = process.maxTime;
-        INPUTS.process.id.value            = process.idProgram;
+        INPUTS.process.id.value            = process.id;
         INPUTS.process.elapsedTime.value   = process.elapsedTime;
         INPUTS.process.remainingTime.value = process.remainingTime;
+        INPUTS.process.quantum.value       = process.quantum;
     } else {
         INPUTS.process.operation.value     = '';
         INPUTS.process.maxTime.value       = '';
         INPUTS.process.id.value            = '';
         INPUTS.process.elapsedTime.value   = '';
         INPUTS.process.remainingTime.value = '';
+        INPUTS.process.quantum.value       = '';
     }
-}
+};
 
 const renderResults = (results) => {
     var spanId;
@@ -392,14 +588,14 @@ const renderResults = (results) => {
         spanId.setAttribute( 'class', 'col-md-3' );
         spanOpAndResult.setAttribute( 'class', 'col-md-9' );
 
-        content = document.createTextNode( program.idProgram );
+        content = document.createTextNode( program.id );
         spanId.appendChild( content );
         content = document.createTextNode( getOpAndResult(program) );
         spanOpAndResult.appendChild( content );
         resultsDiv.appendChild( spanId );
         resultsDiv.appendChild( spanOpAndResult );
     });
-}
+};
 
 const renderBCP = (program, status) => {
     var tr;
@@ -408,7 +604,7 @@ const renderBCP = (program, status) => {
 
     tr = document.createElement( "tr" );
     td = document.createElement( "td" );
-    content = document.createTextNode( program.idProgram );
+    content = document.createTextNode( program.id );
     td.appendChild( content );
     tr.appendChild( td );
     td = document.createElement( "td" );
@@ -486,7 +682,7 @@ const renderBCP = (program, status) => {
     }
 
     return tr;
-}
+};
 
 const renderProcessesTable = () => {
     let tBody = document.createElement( "tbody" );
@@ -517,7 +713,7 @@ const renderProcessesTable = () => {
         tr = renderBCP(program, 'nuevo');
         tBody.appendChild( tr );
     });
-}
+};
 
 const renderExecutionResults = (finishedProcesses) => {
     var tr;
@@ -535,7 +731,7 @@ const renderExecutionResults = (finishedProcesses) => {
     finishedProcesses.forEach(function (program) {
         tr = document.createElement( "tr" );
         td = document.createElement( "td" );
-        content = document.createTextNode( program.idProgram );
+        content = document.createTextNode( program.id );
         td.appendChild( content );
         tr.appendChild( td );
         td = document.createElement( "td" );
@@ -581,32 +777,37 @@ const renderExecutionResults = (finishedProcesses) => {
         }*/
         tBody.appendChild( tr );
     });
-}
+};
 
 const render = () => {
     INPUTS.pendingProcessQty.value = appState.programs.new.length;
-    renderReady(appState.programs.ready);
-    renderLocked(appState.programs.locked);
+    renderProcessToEnter(appState.programs.new);
+    renderMemoryTable();
+    //renderLocked(appState.programs.locked);
     renderCurrentProcess(appState.programs.executing);
     renderResults(appState.programs.finished);
     renderProcessesTable();
     INPUTS.totalElapsedTime.value = appState.totalElapsedTime;
-}
+};
 
 const continueAction = () => {
     if (appState.programs.executing !== null) {
         setTimeout(function () {
             if (appState.programs.executing.remainingTime > 0) {
                 appState.programs.executing.remainingTime--;
+                appState.programs.executing.quantum--;
                 appState.programs.executing.elapsedTime++;
                 appState.totalElapsedTime++;
-                if (appState.programs.executing.elapsedTime % appState.quantum === 0) {
+                if (appState.programs.executing.quantum === 0) {
+                    setBytesStatus(appState.programs.executing, 'ready');
                     appState.programs.ready.push(appState.programs.executing);
                     if (appState.programs.ready.length > 0) {
                         if (appState.programs.ready[0].responseTime === undefined) {
                             appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
                         }
-                        appState.programs.executing = appState.programs.ready.shift();
+                        appState.programs.executing         = appState.programs.ready.shift();
+                        appState.programs.executing.quantum = appState.quantum;
+                        setBytesStatus(appState.programs.executing, 'executing');
                     } else {
                         appState.programs.executing = null;
                     }
@@ -617,21 +818,28 @@ const continueAction = () => {
                     });
                     if (appState.programs.locked[0].lockedTime === WAIT_TIME) {
                         appState.programs.locked[0].lockedTime = 0;
+                        setBytesStatus(appState.programs.locked.slice(0,1)[0], 'ready');
                         appState.programs.ready.push(appState.programs.locked.shift());
                     }
                 }
             } else {
                 appState.programs.executing.endTime = appState.totalElapsedTime;
+                setBytesStatus(appState.programs.executing, '');
+                pullProgramFromMemory(appState.programs.executing);
                 appState.programs.finished.push(appState.programs.executing);
-                if (appState.programs.new.length > 0) {
+                if (appState.programs.new.length > 0 && appState.programs.new[0].pages <= appState.freeFrames.length) {
                     appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
+                    pushProgramInMemory(appState.programs.new[0]);
+                    setBytesStatus(appState.programs.new[0], 'ready');
                     appState.programs.ready.push(appState.programs.new.shift());
                 }
                 if (appState.programs.ready.length > 0) {
                     if (appState.programs.ready[0].responseTime === undefined) {
                         appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
                     }
-                    appState.programs.executing = appState.programs.ready.shift();
+                    appState.programs.executing         = appState.programs.ready.shift();
+                    appState.programs.executing.quantum = appState.quantum;
+                    setBytesStatus(appState.programs.executing, 'executing');
                 } else {
                     appState.programs.executing = null;
                 }
@@ -643,7 +851,9 @@ const continueAction = () => {
         if (appState.programs.ready[0].responseTime === undefined) {
             appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
         }
-        appState.programs.executing = appState.programs.ready.shift();
+        appState.programs.executing         = appState.programs.ready.shift();
+        appState.programs.executing.quantum = appState.quantum;
+        setBytesStatus(appState.programs.executing, 'executing');
         render();
         runApp();
     } else if (appState.programs.locked.length > 0) {
@@ -654,7 +864,9 @@ const continueAction = () => {
             });
             if (appState.programs.locked[0].lockedTime === WAIT_TIME) {
                 appState.programs.locked[0].lockedTime = 0;
-                appState.programs.executing = appState.programs.locked.shift();
+                appState.programs.executing            = appState.programs.locked.shift();
+                appState.programs.executing.quantum    = appState.quantum;
+                setBytesStatus(appState.programs.executing, 'executing');
             }
             render();
             runApp();
@@ -664,16 +876,19 @@ const continueAction = () => {
         appState.action = 'finalize';
         renderExecutionResults(appState.programs.finished);
     }
-}
+};
 
 const interruptionAction = () => {
     if (appState.programs.executing !== null) {
+        setBytesStatus(appState.programs.executing, 'locked');
         appState.programs.locked.push(appState.programs.executing);
         if (appState.programs.ready.length > 0) {
             if (appState.programs.ready[0].responseTime === undefined) {
                 appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
             }
-            appState.programs.executing = appState.programs.ready.shift();
+            appState.programs.executing         = appState.programs.ready.shift();
+            appState.programs.executing.quantum = appState.quantum;
+            setBytesStatus(appState.programs.executing, 'executing');
         } else {
             appState.programs.executing = null;
         }
@@ -684,7 +899,7 @@ const interruptionAction = () => {
         appState.action = 'continue';
         runApp();
     }
-}
+};
 
 const errorAction = () => {
     if (appState.programs.executing !== null) {
@@ -692,16 +907,22 @@ const errorAction = () => {
             appState.programs.executing.endTime = appState.totalElapsedTime;
         }*/
         appState.programs.executing.endTime = appState.totalElapsedTime;
+        setBytesStatus(appState.programs.executing, '');
+        pullProgramFromMemory(appState.programs.executing);
         appState.programs.finished.push(appState.programs.executing);
-        if (appState.programs.new.length > 0) {
+        if (appState.programs.new.length > 0 && appState.programs.new[0].pages <= appState.freeFrames.length) {
             appState.programs.new[0].arrivalTime = appState.totalElapsedTime;
+            pushProgramInMemory(appState.programs.new[0]);
+            setBytesStatus(appState.programs.new[0], 'ready');
             appState.programs.ready.push(appState.programs.new.shift());
         }
         if (appState.programs.ready.length > 0) {
             if (appState.programs.ready[0].responseTime === undefined) {
                 appState.programs.ready[0].responseTime = appState.totalElapsedTime - appState.programs.ready[0].arrivalTime;
             }
-            appState.programs.executing = appState.programs.ready.shift();
+            appState.programs.executing         = appState.programs.ready.shift();
+            appState.programs.executing.quantum = appState.quantum;
+            setBytesStatus(appState.programs.executing, 'executing');
         } else {
             appState.programs.executing = null;
         }
@@ -712,20 +933,15 @@ const errorAction = () => {
         appState.action = 'continue';
         runApp();
     }
-}
+};
 
 const generateProgramAction = () => {
     let program    = generateProgram();
-    let usedMemory = 0;
 
-    if (appState.programs.executing !== null) {
-        usedMemory++;
-    }
-    usedMemory += appState.programs.ready.length;
-    usedMemory += appState.programs.locked.length;
-
-    if (usedMemory < MEMORY_SIZE) {
+    if (appState.freeFrames.length >= program.pages && appState.programs.new.length === 0) {
         program.arrivalTime = appState.totalElapsedTime;
+        pushProgramInMemory(program);
+        setBytesStatus(program, 'ready');
         appState.programs.ready.push(program);
     } else {
         appState.programs.new.push(program);
@@ -734,11 +950,11 @@ const generateProgramAction = () => {
     appState.action = 'continue';
     render();
     runApp();
-}
+};
 
 const showBCPAction = () => {
     CONTAINERS.bcp.removeAttribute('class');
-}
+};
 
 const runApp = () => {
     switch (appState.action) {
@@ -757,4 +973,4 @@ const runApp = () => {
         case 'showBCP':
             showBCPAction();
     }
-}
+};

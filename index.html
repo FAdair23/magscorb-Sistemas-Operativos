@@ -30,11 +30,10 @@
                     <input type="number" id="pending-process" name="pending-process" value="0" disabled>
                 </div>
                 <section class="main-section">
-                    <section id="ready-process">
-                        <h1>Procesos listos</h1>
-                        <h2 class="left">Id Programa</h2>
-                        <h2 class="left">TME</h2>
-                        <h2 class="left">Restante</h2>
+                    <section id="process-to-enter">
+                        <h1>Proceso por ingresar</h1>
+                        <h2 class="col-md-3">Id</h2>
+                        <h2 class="col-md-9">Tamaño</h2>
                     </section>
                     <section id="results">
                         <h1>Procesos terminados</h1>
@@ -53,11 +52,18 @@
                         <input type="number" id="past-time-process" name="past-time-process" disabled>
                         <label for="remaining-time-process">Tiempo restante:</label>
                         <input type="number" id="remaining-time-process" name="remaining-time-process" disabled>
+                        <label for="remaining-time-process">Quantum:</label>
+                        <input type="number" id="quantum-process" name="quantum-process" disabled>
                     </section>
-                    <section id="locked-process">
+                    <!--<section id="locked-process">
                         <h1>Procesos bloqueados</h1>
                         <h2 class="left">Id Programa</h2>
                         <h2 class="right">TT en bloqueado</h2>
+                    </section>-->
+                    <section id="memory">
+                        <h1>Memoria</h1>
+                        <table id="memory-table">
+                        </table>
                     </section>
                 </section>
                 <div class="counter">
